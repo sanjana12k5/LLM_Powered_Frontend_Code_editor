@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+  }
+
+  #root {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0d1117;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #484f58;
+  }
+}
+
+@layer components {
+  .panel-header {
+    @apply flex items-center justify-between px-3 py-2 bg-studio-surface border-b border-studio-border text-xs font-semibold uppercase tracking-wider text-studio-text-muted;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg font-medium text-sm transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-studio-surface hover:bg-studio-surface-hover text-studio-text border border-studio-border rounded-lg font-medium text-sm transition-all duration-200 active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply px-3 py-1.5 hover:bg-studio-surface-hover text-studio-text-muted hover:text-studio-text rounded-md text-sm transition-all duration-150;
+  }
+
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl;
+  }
+
+  .glow-border {
+    @apply border border-studio-accent/30 shadow-lg shadow-studio-accent/10;
+  }
+}

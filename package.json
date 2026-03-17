@@ -1,0 +1,39 @@
+{
+  "name": "ai-frontend-diagnostic-studio",
+  "version": "1.0.0",
+  "description": "AI Frontend Diagnostic and Code Generation Studio",
+  "main": "electron/main.js",
+  "scripts": {
+    "frontend:dev": "cd frontend && npm run dev",
+    "backend:dev": "cd backend && node server.js",
+    "electron:dev": "wait-on http://localhost:5173 && electron .",
+    "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\" \"npm run electron:dev\"",
+    "install:all": "cd frontend && npm install && cd ../backend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\" \"npm run electron:dev\"",
+    "package": "npm run build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.aistudio.diagnostic",
+    "productName": "AI Diagnostic Studio",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*",
+      "backend/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    }
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1",
+    "wait-on": "^7.2.0"
+  }
+}
