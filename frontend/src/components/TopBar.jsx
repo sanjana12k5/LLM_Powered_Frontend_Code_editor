@@ -3,8 +3,9 @@ import { useApp } from '../context/AppContext';
 import axios from 'axios';
 import {
     FolderOpen, FilePlus2, Play, Save, Home,
-    Minus, Square, X, Cpu
+    Minus, Square, X, Cpu, Users
 } from 'lucide-react';
+import { socket } from '../socket';
 
 export default function TopBar() {
     const { state, dispatch } = useApp();
@@ -101,6 +102,30 @@ export default function TopBar() {
         dispatch({ type: 'SET_STATUS', payload: `Saved ${modifiedFiles.length} file(s)` });
     };
 
+    const handleCollaborate = () => {
+        if (state.collabRoomId) {
+            if (window.confirm('Leave current collaboration room?')) {
+                socket.disconnect();
+                dispatch({ type: 'LEAVE_COLLAB_ROOM' });
+            }
+            return;
+        }
+
+        const action = window.prompt('Enter "create" to host a new room, or enter an existing Room ID to join:');
+        if (!action) return;
+
+        let roomId = action.toLowerCase() === 'create' 
+            ? Math.random().toString(36).substring(2, 8).toUpperCase()
+            : action.toUpperCase();
+
+        if (!socket.connected) {
+            socket.connect();
+        }
+        socket.emit('join-room', roomId);
+        dispatch({ type: 'SET_COLLAB_ROOM', payload: roomId });
+        dispatch({ type: 'SET_STATUS', payload: `Joined Room: ${roomId}` });
+    };
+
     const handleRunProject = async (isDebug) => {
         if (!state.projectPath || !window.electronAPI) return;
         try {
@@ -167,6 +192,15 @@ export default function TopBar() {
                     className="btn-ghost flex items-center gap-1.5" title="New AI Project">
                     <FilePlus2 className="w-4 h-4" />
                     <span className="text-xs">New AI Project</span>
+                </button>
+
+                <div className="w-px h-5 bg-studio-border mx-1"></div>
+
+                <button onClick={handleCollaborate}
+                    className={`btn-ghost flex items-center gap-1.5 ${state.collabRoomId ? 'text-studio-accent bg-studio-accent/10' : ''}`}
+                    title={state.collabRoomId ? "Leave Room" : "Collaborate"}>
+                    <Users className="w-4 h-4" />
+                    <span className="text-xs">{state.collabRoomId ? state.collabRoomId : "Collaborate"}</span>
                 </button>
 
                 <div className="w-px h-5 bg-studio-border mx-1"></div>

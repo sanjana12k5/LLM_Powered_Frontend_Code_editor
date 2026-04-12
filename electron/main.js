@@ -208,10 +208,45 @@ ipcMain.on('kill-terminal-process', () => {
   }
 });
 
-ipcMain.handle('run-command', async (event, command, cwd) => {
+let sessionCwd = null;
+
+ipcMain.handle('run-command', async (event, command, projectPath) => {
   return new Promise((resolve) => {
-    exec(command, { cwd: cwd || process.cwd(), shell: true }, (error, stdout, stderr) => {
-      resolve({ error: error ? error.message : null, stdout, stderr });
+    const cwd = sessionCwd || projectPath || process.cwd();
+
+    // Check if command is setting a directory
+    const cmdTrimmed = command.trim();
+    if (cmdTrimmed.startsWith('cd ') || cmdTrimmed === 'cd') {
+      let dest = cmdTrimmed.substring(2).trim();
+      if (!dest) {
+        sessionCwd = projectPath || process.cwd();
+        resolve({ stdout: '', stderr: '', cwd: sessionCwd });
+        return;
+      }
+      
+      let newCwd = dest;
+      if (!path.isAbsolute(dest)) {
+        newCwd = path.resolve(cwd, dest);
+      }
+      
+      fs.stat(newCwd, (err, stats) => {
+        if (err || !stats.isDirectory()) {
+          resolve({ error: `cd: no such file or directory: ${dest}\n`, stderr: '', stdout: '', cwd });
+        } else {
+          sessionCwd = newCwd;
+          resolve({ stdout: '', stderr: '', cwd: sessionCwd });
+        }
+      });
+      return;
+    }
+
+    exec(command, { cwd, shell: true }, (error, stdout, stderr) => {
+      resolve({ 
+        error: error ? error.message : null, 
+        stdout, 
+        stderr,
+        cwd 
+      });
     });
   });
 });

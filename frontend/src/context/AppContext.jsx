@@ -26,6 +26,10 @@ const initialState = {
 
     // Status
     statusMessage: 'Ready',
+
+    // Collaboration
+    collabRoomId: null,
+    collabMessages: [], // { id, userId, message, type, screenshot, timestamp }
 };
 
 function appReducer(state, action) {
@@ -120,6 +124,15 @@ function appReducer(state, action) {
 
         case 'GO_HOME':
             return { ...initialState };
+
+        case 'SET_COLLAB_ROOM':
+            return { ...state, collabRoomId: action.payload };
+
+        case 'ADD_COLLAB_MESSAGE':
+            return { ...state, collabMessages: [...state.collabMessages, action.payload] };
+
+        case 'LEAVE_COLLAB_ROOM':
+            return { ...state, collabRoomId: null, collabMessages: [] };
 
         default:
             return state;

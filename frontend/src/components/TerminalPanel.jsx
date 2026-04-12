@@ -8,6 +8,7 @@ export default function TerminalPanel() {
     const [output, setOutput] = useState('');
     const [command, setCommand] = useState('');
     const [isRunning, setIsRunning] = useState(false);
+    const [currentPath, setCurrentPath] = useState('');
     const outputRef = useRef(null);
 
     useEffect(() => {
@@ -25,6 +26,12 @@ export default function TerminalPanel() {
     }, []);
 
     useEffect(() => {
+        if (state.projectPath && !currentPath) {
+            setCurrentPath(state.projectPath);
+        }
+    }, [state.projectPath, currentPath]);
+
+    useEffect(() => {
         if (outputRef.current) {
             outputRef.current.scrollTop = outputRef.current.scrollHeight;
         }
@@ -34,13 +41,19 @@ export default function TerminalPanel() {
         if (e.key === 'Enter' && command.trim()) {
             const cmd = command.trim();
             setCommand('');
-            setOutput((prev) => prev + `\n$ ${cmd}\n`);
+            
+            const displayPath = currentPath || state.projectPath || '~';
+            setOutput((prev) => prev + `\n${displayPath}> ${cmd}\n`);
             
             try {
-                const res = await window.electronAPI.runCommand(cmd, state.projectPath);
+                // Pass currentPath instead of state.projectPath if available
+                const activePath = currentPath || state.projectPath;
+                const res = await window.electronAPI.runCommand(cmd, activePath);
+                
                 if (res.stdout) setOutput((prev) => prev + res.stdout);
                 if (res.stderr) setOutput((prev) => prev + res.stderr);
                 if (res.error) setOutput((prev) => prev + `Error: ${res.error}\n`);
+                if (res.cwd) setCurrentPath(res.cwd);
             } catch (err) {
                 setOutput((prev) => prev + `Failed to execute: ${err.message}\n`);
             }
@@ -106,7 +119,9 @@ export default function TerminalPanel() {
                         {output || <span className="text-studio-text-muted/50 italic">Terminal ready. Type a command below...</span>}
                     </div>
                     <div className="flex items-center border-t border-studio-border px-2 py-1 bg-[#1e1e1e]">
-                        <span className="text-blue-400 font-mono text-xs mr-2">$</span>
+                        <span className="text-blue-400 font-mono text-xs mr-2 truncate max-w-[50%]" title={currentPath || state.projectPath || '~'}>
+                            {currentPath || state.projectPath || '~'}&gt;
+                        </span>
                         <input
                             type="text"
                             value={command}

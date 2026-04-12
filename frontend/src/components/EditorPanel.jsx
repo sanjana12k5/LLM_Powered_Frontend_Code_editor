@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import { useApp } from '../context/AppContext';
+import { socket } from '../socket';
 import { X, Circle, Code2 } from 'lucide-react';
 
 export default function EditorPanel() {
@@ -9,12 +10,36 @@ export default function EditorPanel() {
 
     const handleEditorChange = useCallback((value) => {
         if (state.activeFileIndex >= 0) {
+            // Only emit if it's an actual change locally triggered
+            if (activeFile && value !== activeFile.content && state.collabRoomId) {
+                socket.emit('code-update', {
+                    roomId: state.collabRoomId,
+                    code: value,
+                    fileId: activeFile.path
+                });
+            }
             dispatch({
                 type: 'UPDATE_FILE_CONTENT',
                 payload: { index: state.activeFileIndex, content: value }
             });
         }
-    }, [state.activeFileIndex, dispatch]);
+    }, [state.activeFileIndex, activeFile, state.collabRoomId, dispatch]);
+
+    React.useEffect(() => {
+        const handleCodeUpdate = ({ code, fileId, userId }) => {
+            // Find the file index
+            const index = state.openFiles.findIndex(f => f.path === fileId);
+            if (index !== -1 && state.openFiles[index].content !== code) {
+                dispatch({
+                    type: 'UPDATE_FILE_CONTENT',
+                    payload: { index, content: code }
+                });
+            }
+        };
+
+        socket.on('code-update', handleCodeUpdate);
+        return () => socket.off('code-update', handleCodeUpdate);
+    }, [state.openFiles, dispatch]);
 
     const handleSave = useCallback(async () => {
         if (!activeFile) return;

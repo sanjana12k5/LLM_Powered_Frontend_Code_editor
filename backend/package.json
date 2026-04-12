@@ -8,6 +8,7 @@
         "dev": "node server.js"
     },
     "dependencies": {
+        "@google/generative-ai": "^0.2.1",
         "cors": "^2.8.5",
         "dotenv": "^16.3.1",
         "eslint": "^8.56.0",
@@ -15,6 +16,6 @@
         "glob": "^10.3.10",
         "mongoose": "^8.1.0",
         "openai": "^4.26.0",
-        "@google/generative-ai": "^0.2.1"
+        "socket.io": "^4.8.3"
     }
 }

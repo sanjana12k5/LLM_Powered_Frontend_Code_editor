@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const fileRoutes = require('./routes/fileRoutes');
 const analysisRoutes = require('./routes/analysisRoutes');
@@ -42,10 +44,48 @@ const connectDB = async () => {
     }
 };
 
+// Create HTTP Server and attach Socket.io
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log(`[Socket] User connected: ${socket.id}`);
+    
+    socket.on('join-room', (roomId) => {
+        socket.join(roomId);
+        console.log(`[Socket] User ${socket.id} joined room: ${roomId}`);
+        socket.to(roomId).emit('user-joined', { userId: socket.id });
+    });
+
+    socket.on('code-update', ({ roomId, code, fileId }) => {
+        socket.to(roomId).emit('code-update', { code, fileId, userId: socket.id });
+    });
+
+    socket.on('chat-message', ({ roomId, message, type='text', screenshot=null }) => {
+        io.to(roomId).emit('chat-message', {
+            id: Date.now() + Math.random().toString(),
+            userId: socket.id,
+            message,
+            type,
+            screenshot,
+            timestamp: new Date().toISOString()
+        });
+    });
+
+    socket.on('disconnect', () => {
+        console.log(`[Socket] User disconnected: ${socket.id}`);
+    });
+});
+
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`[Server] AI Diagnostic Studio backend running on port ${PORT}`);
     connectDB();
 });
 
-module.exports = app;
+module.exports = { app, server, io };
