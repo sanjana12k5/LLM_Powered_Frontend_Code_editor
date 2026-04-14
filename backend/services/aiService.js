@@ -39,7 +39,7 @@ async function queryGemini(prompt) {
         throw new Error('Gemini API key not configured. Set GEMINI_API_KEY in .env file.');
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
 
     // Ensure request body format
     const body = {
