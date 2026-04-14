@@ -58,8 +58,15 @@ io.on('connection', (socket) => {
     
     socket.on('join-room', (roomId) => {
         socket.join(roomId);
+        socket.roomId = roomId;
         console.log(`[Socket] User ${socket.id} joined room: ${roomId}`);
         socket.to(roomId).emit('user-joined', { userId: socket.id });
+    });
+
+    socket.on('leave-room', (roomId) => {
+        socket.leave(roomId);
+        socket.to(roomId).emit('user-left', { userId: socket.id });
+        socket.roomId = null;
     });
 
     socket.on('code-update', ({ roomId, code, fileId }) => {
@@ -77,8 +84,15 @@ io.on('connection', (socket) => {
         });
     });
 
+    socket.on('typing', ({ roomId, isTyping }) => {
+        socket.to(roomId).emit('typing', { userId: socket.id, isTyping });
+    });
+
     socket.on('disconnect', () => {
         console.log(`[Socket] User disconnected: ${socket.id}`);
+        if (socket.roomId) {
+            io.to(socket.roomId).emit('user-left', { userId: socket.id });
+        }
     });
 });
 

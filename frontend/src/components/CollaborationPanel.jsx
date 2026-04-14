@@ -7,7 +7,9 @@ import html2canvas from 'html2canvas';
 export default function CollaborationPanel() {
     const { state, dispatch } = useApp();
     const [message, setMessage] = useState('');
+    const [typingUsers, setTypingUsers] = useState(new Set());
     const chatEndRef = useRef(null);
+    const typingTimeoutRef = useRef(null);
 
     useEffect(() => {
         if (!state.collabRoomId) return;
@@ -29,12 +31,43 @@ export default function CollaborationPanel() {
             });
         };
 
+        const handleUserLeft = ({ userId }) => {
+            dispatch({
+                type: 'ADD_COLLAB_MESSAGE',
+                payload: {
+                    id: Date.now().toString(),
+                    userId: 'System',
+                    message: `User ${userId.substring(0, 4)} left the room.`,
+                    type: 'system',
+                    timestamp: new Date().toISOString()
+                }
+            });
+            setTypingUsers(prev => {
+                const next = new Set(prev);
+                next.delete(userId);
+                return next;
+            });
+        };
+
+        const handleTyping = ({ userId, isTyping }) => {
+            setTypingUsers(prev => {
+                const next = new Set(prev);
+                if (isTyping) next.add(userId);
+                else next.delete(userId);
+                return next;
+            });
+        };
+
         socket.on('chat-message', handleChatMessage);
         socket.on('user-joined', handleUserJoined);
+        socket.on('user-left', handleUserLeft);
+        socket.on('typing', handleTyping);
 
         return () => {
             socket.off('chat-message', handleChatMessage);
             socket.off('user-joined', handleUserJoined);
+            socket.off('user-left', handleUserLeft);
+            socket.off('typing', handleTyping);
         };
     }, [state.collabRoomId, dispatch]);
 
@@ -51,6 +84,7 @@ export default function CollaborationPanel() {
             message: message.trim(),
             type: 'text'
         });
+        socket.emit('typing', { roomId: state.collabRoomId, isTyping: false });
         setMessage('');
     };
 
@@ -144,6 +178,16 @@ export default function CollaborationPanel() {
                     })
                 )}
                 <div ref={chatEndRef} />
+                {typingUsers.size > 0 && (
+                    <div className="text-xs text-studio-text-muted italic flex items-center gap-2 pb-2">
+                        <div className="flex gap-1 items-center justify-center">
+                            <span className="w-1.5 h-1.5 bg-studio-text-muted rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-1.5 h-1.5 bg-studio-text-muted rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-1.5 h-1.5 bg-studio-text-muted rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                        {Array.from(typingUsers).map(u => `User ${u.substring(0,4)}`).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
+                    </div>
+                )}
             </div>
 
             {/* Input Area */}
@@ -159,7 +203,14 @@ export default function CollaborationPanel() {
                     <input
                         type="text"
                         value={message}
-                        onChange={(e) => setMessage(e.target.value)}
+                        onChange={(e) => {
+                            setMessage(e.target.value);
+                            socket.emit('typing', { roomId: state.collabRoomId, isTyping: e.target.value.length > 0 });
+                            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                            typingTimeoutRef.current = setTimeout(() => {
+                                socket.emit('typing', { roomId: state.collabRoomId, isTyping: false });
+                            }, 2000);
+                        }}
                         onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                         placeholder="Type a message..."
                         className="flex-1 bg-studio-bg border border-studio-border rounded-lg px-3 py-1.5 text-sm outline-none focus:border-studio-accent focus:ring-1 focus:ring-studio-accent/30"
