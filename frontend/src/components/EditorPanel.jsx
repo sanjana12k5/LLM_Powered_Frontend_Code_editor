@@ -1,17 +1,37 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { useApp } from '../context/AppContext';
 import { socket } from '../socket';
-import { X, Circle, Code2, Columns, Map as SidebarRight, WrapText, Wand2, Sun, Moon, ChevronRight } from 'lucide-react';
+import { 
+    X, Circle, Code2, Columns, Map as SidebarRight, WrapText, Wand2, Sun, Moon, ChevronRight,
+    Search, Replace, Navigation, ZoomIn, ZoomOut, Settings, FileCode,
+    MoreVertical, Copy, Trash2, Pencil
+} from 'lucide-react';
 
 export default function EditorPanel() {
     const { state, dispatch } = useApp();
     const [isSplit, setIsSplit] = useState(false);
     const [splitFileIndex, setSplitFileIndex] = useState(-1);
+    const [showFind, setShowFind] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+    const [fontSize, setFontSize] = useState(14);
+    const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
+    const [selection, setSelection] = useState(null);
+    const [findQuery, setFindQuery] = useState('');
+    const [replaceQuery, setReplaceQuery] = useState('');
+    const [showReplace, setShowReplace] = useState(false);
+    const [goToLine, setGoToLine] = useState('');
+    const [showGoToLine, setShowGoToLine] = useState(false);
     const [editorSettings, setEditorSettings] = useState({
         theme: 'vs-dark',
         minimap: true,
-        wordWrap: 'on'
+        wordWrap: 'on',
+        lineNumbers: 'on',
+        formatOnSave: true,
+        autoSave: true,
+        bracketPairs: true,
+        renderWhitespace: 'none',
+        tabSize: 4
     });
     
     const editorRefMain = useRef(null);
@@ -66,11 +86,119 @@ export default function EditorPanel() {
         }
     }, [activeFile, state.activeFileIndex, dispatch]);
 
+    // Handle cursor position changes
+    useEffect(() => {
+        const editor = editorRefMain.current;
+        if (!editor) return;
+        const disposable = editor.onDidChangeCursorPosition((e) => {
+            setCursorPosition({ line: e.position.lineNumber, column: e.position.column });
+        });
+        return () => disposable.dispose();
+    }, [activeFile]);
+
+    // Handle selection changes
+    useEffect(() => {
+        const editor = editorRefMain.current;
+        if (!editor) return;
+        const disposable = editor.onDidChangeCursorSelection((e) => {
+            const sel = e.selection;
+            if (sel.startLineNumber !== sel.endLineNumber || sel.startColumn !== sel.endColumn) {
+                setSelection({
+                    startLine: sel.startLineNumber,
+                    startCol: sel.startColumn,
+                    endLine: sel.endLineNumber,
+                    endCol: sel.endColumn
+                });
+            } else {
+                setSelection(null);
+            }
+        });
+        return () => disposable.dispose();
+    }, [activeFile]);
+
+    // Handle find
+    const handleFind = useCallback(() => {
+        const editor = editorRefMain.current;
+        if (!editor || !findQuery) return;
+        const model = editor.getModel();
+        if (!model) return;
+        const searchParams = {
+            searchString: findQuery,
+            isCaseSensitive: false,
+            isWholeWord: false,
+            isRegex: false,
+            matchCase: false
+        };
+        const matches = model.findMatches(findQuery, false, searchParams.isRegex, searchParams.matchCase, searchParams.isWholeWord, false);
+        if (matches.length > 0) {
+            const match = matches[0];
+            editor.setSelection(match.range);
+            editor.revealLineInCenter(match.range.startLineNumber);
+        }
+    }, [findQuery]);
+
+    const handleFindNext = useCallback(() => {
+        const editor = editorRefMain.current;
+        if (!editor || !findQuery) return;
+        editor.getAction('actions.findNext').run();
+    }, [findQuery]);
+
+    const handleFindPrevious = useCallback(() => {
+        const editor = editorRefMain.current;
+        if (!editor || !findQuery) return;
+        editor.getAction('actions.findPrevious').run();
+    }, [findQuery]);
+
+    const handleReplaceAll = useCallback(() => {
+        const editor = editorRefMain.current;
+        if (!editor || !findQuery || !replaceQuery) return;
+        const model = editor.getModel();
+        if (!model) return;
+        const oldContent = model.getValue();
+        const newContent = oldContent.replace(new RegExp(findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replaceQuery);
+        const targetIndex = state.activeFileIndex;
+        if (targetIndex >= 0) {
+            dispatch({
+                type: 'UPDATE_FILE_CONTENT',
+                payload: { index: targetIndex, content: newContent }
+            });
+        }
+    }, [findQuery, replaceQuery, state.activeFileIndex, dispatch]);
+
+    // Handle go to line
+    const handleGoToLineAction = useCallback(() => {
+        const editor = editorRefMain.current;
+        if (!editor || !goToLine) return;
+        const lineNum = parseInt(goToLine, 10);
+        if (isNaN(lineNum)) return;
+        editor.revealLine(lineNum);
+        editor.setPosition({ lineNumber: lineNum, column: 1 });
+        setShowGoToLine(false);
+        setGoToLine('');
+    }, [goToLine]);
+
+    const increaseFontSize = () => {
+        setFontSize(prev => Math.min(prev + 1, 24));
+    };
+
+    const decreaseFontSize = () => {
+        setFontSize(prev => Math.max(prev - 1, 8));
+    };
+
     // Handle keyboard shortcut Ctrl+S inside Monaco
     const handleEditorMountMain = useCallback((editor, monaco) => {
         editorRefMain.current = editor;
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             handleSave();
+        });
+        
+        // Add keyboard shortcuts
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => {
+            setShowFind(true);
+        });
+        
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyG, () => {
+            setShowGoToLine(true);
         });
     }, [handleSave]);
 
@@ -178,7 +306,7 @@ export default function EditorPanel() {
     );
 
     return (
-        <div className="flex-1 flex flex-col bg-studio-editor overflow-hidden">
+        <div className="flex-1 flex flex-col bg-studio-editor overflow-hidden relative">
             {/* Toolbar */}
             <div className="flex items-center justify-between px-3 py-1.5 bg-studio-surface border-b border-studio-border shrink-0">
                 <div className="flex items-center gap-2 text-xs text-studio-text-muted">
@@ -211,11 +339,182 @@ export default function EditorPanel() {
                         {editorSettings.theme === 'vs-dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
                     </button>
                     <div className="w-px h-4 bg-studio-border mx-1"></div>
+                    <button onClick={() => setShowFind(!showFind)} className={`p-1.5 rounded hover:bg-white/10 ${showFind ? 'text-studio-accent bg-studio-accent/10' : 'text-studio-text-muted hover:text-studio-text'}`} title="Find (Ctrl+F)">
+                        <Search className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => setShowGoToLine(true)} className="p-1.5 rounded hover:bg-white/10 text-studio-text-muted hover:text-studio-text" title="Go to Line (Ctrl+G)">
+                        <Navigation className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="w-px h-4 bg-studio-border mx-1"></div>
+                    <button onClick={decreaseFontSize} className="p-1.5 rounded hover:bg-white/10 text-studio-text-muted hover:text-studio-text" title="Decrease Font Size">
+                        <ZoomOut className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-xs text-studio-text-muted w-6 text-center">{fontSize}</span>
+                    <button onClick={increaseFontSize} className="p-1.5 rounded hover:bg-white/10 text-studio-text-muted hover:text-studio-text" title="Increase Font Size">
+                        <ZoomIn className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="w-px h-4 bg-studio-border mx-1"></div>
                     <button onClick={() => setIsSplit(!isSplit)} className={`p-1.5 rounded hover:bg-white/10 ${isSplit ? 'text-studio-accent bg-studio-accent/10' : 'text-studio-text-muted hover:text-studio-text'}`} title="Split Editor Right">
                         <Columns className="w-3.5 h-3.5" />
                     </button>
+                    <div className="w-px h-4 bg-studio-border mx-1"></div>
+                    <button onClick={() => setShowSettings(!showSettings)} className={`p-1.5 rounded hover:bg-white/10 ${showSettings ? 'text-studio-accent bg-studio-accent/10' : 'text-studio-text-muted hover:text-studio-text'}`} title="Editor Settings">
+                        <Settings className="w-3.5 h-3.5" />
+                    </button>
                 </div>
             </div>
+
+            {/* Find/Replace Bar */}
+            {showFind && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-studio-surface border-b border-studio-border shrink-0">
+                    <div className="flex items-center gap-1 bg-studio-bg rounded px-2 py-1">
+                        <Search className="w-3.5 h-3.5 text-studio-text-muted" />
+                        <input 
+                            type="text" 
+                            placeholder="Find"
+                            value={findQuery}
+                            onChange={e => setFindQuery(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleFind()}
+                            className="bg-transparent border-none outline-none text-xs text-studio-text placeholder-studio-text-muted w-48"
+                            autoFocus
+                        />
+                    </div>
+                    <button onClick={handleFind} className="p-1 rounded hover:bg-white/10 text-studio-text-muted" title="Find Next">
+                        Search
+                    </button>
+                    <button onClick={() => setShowReplace(!showReplace)} className="p-1 rounded hover:bg-white/10 text-studio-text-muted text-xs">
+                        {showReplace ? 'Hide Replace' : 'Replace'}
+                    </button>
+                    {showReplace && (
+                        <>
+                            <div className="flex items-center gap-1 bg-studio-bg rounded px-2 py-1">
+                                <Replace className="w-3.5 h-3.5 text-studio-text-muted" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Replace with"
+                                    value={replaceQuery}
+                                    onChange={e => setReplaceQuery(e.target.value)}
+                                    className="bg-transparent border-none outline-none text-xs text-studio-text placeholder-studio-text-muted w-48"
+                                />
+                            </div>
+                            <button onClick={handleReplaceAll} className="p-1 rounded hover:bg-white/10 text-studio-text-muted text-xs">
+                                Replace All
+                            </button>
+                        </>
+                    )}
+                    <button onClick={() => { setShowFind(false); setFindQuery(''); setShowReplace(false); }} className="ml-auto p-1 rounded hover:bg-white/10 text-studio-text-muted">
+                        <X className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            )}
+
+            {/* Go to Line Modal */}
+            {showGoToLine && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-studio-surface border border-studio-border rounded-lg shadow-xl p-4 w-80">
+                        <h3 className="text-sm font-semibold text-studio-text mb-3">Go to Line</h3>
+                        <input 
+                            type="text" 
+                            placeholder="Line number"
+                            value={goToLine}
+                            onChange={e => setGoToLine(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleGoToLineAction()}
+                            className="w-full bg-studio-bg border border-studio-border rounded px-3 py-2 text-sm text-studio-text outline-none focus:border-studio-accent"
+                            autoFocus
+                        />
+                        <div className="flex justify-end gap-2 mt-3">
+                            <button onClick={() => setShowGoToLine(false)} className="px-3 py-1.5 text-xs text-studio-text-muted hover:text-studio-text">Cancel</button>
+                            <button onClick={handleGoToLineAction} className="px-3 py-1.5 bg-studio-accent text-white rounded text-xs hover:bg-studio-accent-hover">Go</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Settings Dropdown */}
+            {showSettings && (
+                <div className="absolute right-14 top-12 bg-studio-surface border border-studio-border rounded-lg shadow-xl p-3 z-40 w-64">
+                    <h3 className="text-xs font-semibold text-studio-text mb-2 uppercase tracking-wider">Editor Settings</h3>
+                    <div className="space-y-2">
+                        <label className="flex items-center justify-between text-xs cursor-pointer">
+                            <span className="text-studio-text-muted">Line Numbers</span>
+                            <input 
+                                type="checkbox" 
+                                checked={editorSettings.lineNumbers === 'on'}
+                                onChange={e => setEditorSettings(s => ({ ...s, lineNumbers: e.target.checked ? 'on' : 'off' }))}
+                                className="accent-studio-accent"
+                            />
+                        </label>
+                        <label className="flex items-center justify-between text-xs cursor-pointer">
+                            <span className="text-studio-text-muted">Minimap</span>
+                            <input 
+                                type="checkbox" 
+                                checked={editorSettings.minimap}
+                                onChange={e => setEditorSettings(s => ({ ...s, minimap: e.target.checked }))}
+                                className="accent-studio-accent"
+                            />
+                        </label>
+                        <label className="flex items-center justify-between text-xs cursor-pointer">
+                            <span className="text-studio-text-muted">Word Wrap</span>
+                            <input 
+                                type="checkbox" 
+                                checked={editorSettings.wordWrap === 'on'}
+                                onChange={e => setEditorSettings(s => ({ ...s, wordWrap: e.target.checked ? 'on' : 'off' }))}
+                                className="accent-studio-accent"
+                            />
+                        </label>
+                        <label className="flex items-center justify-between text-xs cursor-pointer">
+                            <span className="text-studio-text-muted">Bracket Pairs</span>
+                            <input 
+                                type="checkbox" 
+                                checked={editorSettings.bracketPairs}
+                                onChange={e => setEditorSettings(s => ({ ...s, bracketPairs: e.target.checked }))}
+                                className="accent-studio-accent"
+                            />
+                        </label>
+                        <label className="flex items-center justify-between text-xs cursor-pointer">
+                            <span className="text-studio-text-muted">Auto Save</span>
+                            <input 
+                                type="checkbox" 
+                                checked={editorSettings.autoSave}
+                                onChange={e => setEditorSettings(s => ({ ...s, autoSave: e.target.checked }))}
+                                className="accent-studio-accent"
+                            />
+                        </label>
+                        <label className="flex items-center justify-between text-xs cursor-pointer">
+                            <span className="text-studio-text-muted">Format on Save</span>
+                            <input 
+                                type="checkbox" 
+                                checked={editorSettings.formatOnSave}
+                                onChange={e => setEditorSettings(s => ({ ...s, formatOnSave: e.target.checked }))}
+                                className="accent-studio-accent"
+                            />
+                        </label>
+                        <div className="border-t border-studio-border pt-2 mt-2">
+                            <span className="text-xs text-studio-text-muted">Tab Size</span>
+                            <select 
+                                value={editorSettings.tabSize}
+                                onChange={e => setEditorSettings(s => ({ ...s, tabSize: parseInt(e.target.value) }))}
+                                className="ml-2 bg-studio-bg border border-studio-border rounded px-2 py-0.5 text-xs text-studio-text"
+                            >
+                                <option value={2}>2 spaces</option>
+                                <option value={4}>4 spaces</option>
+                            </select>
+                        </div>
+                        <div className="border-t border-studio-border pt-2 mt-2">
+                            <span className="text-xs text-studio-text-muted">Render Whitespace</span>
+                            <select 
+                                value={editorSettings.renderWhitespace}
+                                onChange={e => setEditorSettings(s => ({ ...s, renderWhitespace: e.target.value }))}
+                                className="ml-2 bg-studio-bg border border-studio-border rounded px-2 py-0.5 text-xs text-studio-text"
+                            >
+                                <option value="none">None</option>
+                                <option value="selection">Selection</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Editor Area (Flex Row for Split) */}
             <div className="flex-1 flex overflow-hidden">
@@ -233,7 +532,7 @@ export default function EditorPanel() {
                                 onMount={handleEditorMountMain}
                                 theme={editorSettings.theme}
                                 options={{
-                                    fontSize: 14,
+                                    fontSize,
                                     fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
                                     minimap: { enabled: editorSettings.minimap, scale: 1 },
                                     scrollBeyondLastLine: false,
@@ -241,12 +540,14 @@ export default function EditorPanel() {
                                     cursorBlinking: 'smooth',
                                     smoothScrolling: true,
                                     padding: { top: 8 },
-                                    lineNumbers: 'on',
+                                    lineNumbers: editorSettings.lineNumbers,
                                     wordWrap: editorSettings.wordWrap,
-                                    bracketPairColorization: { enabled: true },
+                                    bracketPairColorization: { enabled: editorSettings.bracketPairs },
                                     autoClosingBrackets: 'always',
                                     formatOnPaste: true,
                                     suggestOnTriggerCharacters: true,
+                                    renderWhitespace: editorSettings.renderWhitespace,
+                                    tabSize: editorSettings.tabSize,
                                 }}
                             />
                         )}
@@ -268,7 +569,7 @@ export default function EditorPanel() {
                                     onMount={handleEditorMountSplit}
                                     theme={editorSettings.theme}
                                     options={{
-                                        fontSize: 14,
+                                        fontSize,
                                         fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
                                         minimap: { enabled: editorSettings.minimap, scale: 1 },
                                         scrollBeyondLastLine: false,
@@ -276,12 +577,14 @@ export default function EditorPanel() {
                                         cursorBlinking: 'smooth',
                                         smoothScrolling: true,
                                         padding: { top: 8 },
-                                        lineNumbers: 'on',
+                                        lineNumbers: editorSettings.lineNumbers,
                                         wordWrap: editorSettings.wordWrap,
-                                        bracketPairColorization: { enabled: true },
+                                        bracketPairColorization: { enabled: editorSettings.bracketPairs },
                                         autoClosingBrackets: 'always',
                                         formatOnPaste: true,
                                         suggestOnTriggerCharacters: true,
+                                        renderWhitespace: editorSettings.renderWhitespace,
+                                        tabSize: editorSettings.tabSize,
                                     }}
                                 />
                             )}

@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
     Folder, FolderOpen, FileCode2, FileText, FileType,
-    ChevronRight, ChevronDown, Search, FilePlus2, FolderPlus, RefreshCw
+    ChevronRight, ChevronDown, Search, FilePlus2, FolderPlus, RefreshCw,
+    MoreVertical, Trash2, Copy, Pencil, X
 } from 'lucide-react';
 
 const FILE_ICONS = {
@@ -55,7 +56,7 @@ function filterTree(nodes, searchTerm) {
     }).filter(Boolean);
 }
 
-function FileTreeNode({ node, depth = 0 }) {
+function FileTreeNode({ node, depth = 0, onContextMenu }) {
     const { state, dispatch } = useApp();
     const isExpanded = state.expandedFolders.has(node.path);
     const isActive = state.openFiles[state.activeFileIndex]?.path === node.path;
@@ -93,6 +94,7 @@ function FileTreeNode({ node, depth = 0 }) {
             <div>
                 <button
                     onClick={handleClick}
+                    onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, node); }}
                     className={`w-full flex items-center gap-1 px-2 py-1 hover:bg-studio-surface-hover text-sm text-studio-text-muted hover:text-studio-text transition-colors`}
                     style={{ paddingLeft: `${depth * 16 + 8}px` }}
                 >
@@ -129,6 +131,7 @@ function FileTreeNode({ node, depth = 0 }) {
     return (
         <button
             onClick={handleClick}
+            onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, node); }}
             className={`w-full flex items-center gap-1.5 px-2 py-1 text-sm transition-colors ${isActive
                     ? 'bg-blue-500/15 text-studio-text border-l-2 border-blue-500'
                     : 'text-studio-text-muted hover:bg-studio-surface-hover hover:text-studio-text border-l-2 border-transparent'
@@ -144,6 +147,59 @@ function FileTreeNode({ node, depth = 0 }) {
 export default function FileExplorer() {
     const { state, dispatch } = useApp();
     const [searchTerm, setSearchTerm] = useState('');
+    const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, node: null });
+    const contextMenuRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
+                setContextMenu({ show: false, x: 0, y: 0, node: null });
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
+    const handleContextMenu = (e, node) => {
+        setContextMenu({ show: true, x: e.clientX, y: e.clientY, node });
+    };
+
+    const handleDeleteFile = async () => {
+        if (!contextMenu.node || !window.electronAPI) return;
+        if (confirm(`Delete ${contextMenu.node.name}?`)) {
+            try {
+                await window.electronAPI.deleteFile(contextMenu.node.path);
+                reloadProject();
+            } catch (err) {
+                alert('Failed to delete: ' + err.message);
+            }
+        }
+        setContextMenu({ show: false, x: 0, y: 0, node: null });
+    };
+
+    const handleRename = async () => {
+        if (!contextMenu.node) return;
+        const newName = prompt('Enter new name:', contextMenu.node.name);
+        if (!newName || newName === contextMenu.node.name) return;
+        
+        try {
+            if (window.electronAPI) {
+                const separator = contextMenu.node.path.includes('\\') ? '\\' : '/';
+                const newPath = contextMenu.node.path.replace(contextMenu.node.name, newName);
+                await window.electronAPI.renameFile(contextMenu.node.path, newPath);
+                reloadProject();
+            }
+        } catch (err) {
+            alert('Failed to rename: ' + err.message);
+        }
+        setContextMenu({ show: false, x: 0, y: 0, node: null });
+    };
+
+    const handleCopyPath = async () => {
+        if (!contextMenu.node) return;
+        await navigator.clipboard.writeText(contextMenu.node.path);
+        setContextMenu({ show: false, x: 0, y: 0, node: null });
+    };
 
     const reloadProject = async () => {
         if (!state.projectPath || !window.electronAPI) return;
@@ -230,10 +286,33 @@ export default function FileExplorer() {
                             return a.type === 'directory' ? -1 : 1;
                         })
                         .map((node) => (
-                            <FileTreeNode key={node.path} node={node} />
+                            <FileTreeNode key={node.path} node={node} onContextMenu={handleContextMenu} />
                         ))
                 )}
             </div>
+
+            {/* Context Menu */}
+            {contextMenu.show && (
+                <div 
+                    ref={contextMenuRef}
+                    className="fixed bg-studio-surface border border-studio-border rounded-lg shadow-xl py-1 z-50 min-w-[160px]"
+                    style={{ left: contextMenu.x, top: contextMenu.y }}
+                >
+                    <button onClick={handleRename} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-studio-text hover:bg-studio-surface-hover">
+                        <Pencil className="w-3.5 h-3.5" />
+                        Rename
+                    </button>
+                    <button onClick={handleCopyPath} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-studio-text hover:bg-studio-surface-hover">
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy Path
+                    </button>
+                    <div className="border-t border-studio-border my-1"></div>
+                    <button onClick={handleDeleteFile} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-studio-error hover:bg-studio-surface-hover">
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

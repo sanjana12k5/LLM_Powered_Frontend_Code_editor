@@ -26,6 +26,9 @@ export default {
                     'editor': '#0d1117',
                     'tab': '#161b22',
                     'tab-active': '#0d1117',
+                    'orange': '#f0883e',
+                    'cyan': '#39c5cf',
+                    'pink': '#db61a2',
                 }
             },
             fontFamily: {

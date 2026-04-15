@@ -1,14 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import axios from 'axios';
 import {
     FolderOpen, FilePlus2, Play, Save, Home,
-    Minus, Square, X, Cpu, Users
+    Minus, Square, X, Cpu, Users, Keyboard, XCircle
 } from 'lucide-react';
 import { socket } from '../socket';
 
+const KEYBOARD_SHORTCUTS = [
+    { keys: 'Ctrl+S', action: 'Save File' },
+    { keys: 'Ctrl+Shift+S', action: 'Save All Files' },
+    { keys: 'Ctrl+F', action: 'Find' },
+    { keys: 'Ctrl+H', action: 'Find and Replace' },
+    { keys: 'Ctrl+G', action: 'Go to Line' },
+    { keys: 'Ctrl+W', action: 'Close File' },
+    { keys: 'Ctrl+Shift+W', action: 'Close All Files' },
+    { keys: 'Ctrl+Tab', action: 'Next File' },
+    { keys: 'Ctrl+Shift+Tab', action: 'Previous File' },
+    { keys: 'Ctrl+/', action: 'Toggle Comment' },
+    { keys: 'Ctrl+Shift+A', action: 'Select All' },
+    { keys: 'Alt+Up', action: 'Move Line Up' },
+    { keys: 'Alt+Down', action: 'Move Line Down' },
+    { keys: 'Ctrl+[', action: 'Outdent Line' },
+    { keys: 'Ctrl+]', action: 'Indent Line' },
+    { keys: 'Ctrl+D', action: 'Duplicate Line' },
+    { keys: 'Ctrl+Shift+K', action: 'Delete Line' },
+    { keys: 'F1', action: 'Command Palette' },
+    { keys: 'Ctrl+Shift+P', action: 'Quick Open' },
+    { keys: 'Ctrl+`', action: 'Toggle Terminal' },
+];
+
 export default function TopBar() {
     const { state, dispatch } = useApp();
+    const [showShortcuts, setShowShortcuts] = useState(false);
 
     const handleOpenProject = async () => {
         try {
@@ -237,11 +261,63 @@ export default function TopBar() {
                     <Save className="w-4 h-4" />
                     <span className="text-xs">Save Files</span>
                 </button>
+
+                <div className="w-px h-5 bg-studio-border mx-1"></div>
+
+                <button onClick={() => setShowShortcuts(true)}
+                    className="btn-ghost flex items-center gap-1.5" title="Keyboard Shortcuts">
+                    <Keyboard className="w-4 h-4" />
+                    <span className="text-xs">Shortcuts</span>
+                </button>
             </div>
 
             {/* Spacer for drag region */}
             <div className="flex-1"></div>
 
         </div>
+
+        {/* Keyboard Shortcuts Modal */}
+        {showShortcuts && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowShortcuts(false)}>
+                <div 
+                    className="bg-studio-surface border border-studio-border rounded-lg shadow-2xl w-[480px] max-h-[80vh] overflow-hidden flex flex-col"
+                    onClick={e => e.stopPropagation()}
+                >
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-studio-border">
+                        <h2 className="text-sm font-semibold text-studio-text">Keyboard Shortcuts</h2>
+                        <button onClick={() => setShowShortcuts(false)} className="p-1 rounded hover:bg-studio-surface-hover">
+                            <XCircle className="w-5 h-5 text-studio-text-muted" />
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-studio-border">
+                                    <th className="text-left text-xs text-studio-text-muted px-2 py-1.5 font-medium">Keys</th>
+                                    <th className="text-left text-xs text-studio-text-muted px-2 py-1.5 font-medium">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {KEYBOARD_SHORTCUTS.map((shortcut, index) => (
+                                    <tr key={index} className="border-b border-studio-border/50">
+                                        <td className="px-2 py-1.5">
+                                            <kbd className="bg-studio-bg px-1.5 py-0.5 rounded text-xs text-studio-accent font-mono">
+                                                {shortcut.keys}
+                                            </kbd>
+                                        </td>
+                                        <td className="px-2 py-1.5 text-xs text-studio-text-muted">{shortcut.action}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="px-4 py-2 border-t border-studio-border flex justify-end">
+                        <button onClick={() => setShowShortcuts(false)} className="px-3 py-1.5 bg-studio-accent text-white text-xs rounded hover:bg-studio-accent-hover">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     );
 }
