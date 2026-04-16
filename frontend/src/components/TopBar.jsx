@@ -186,6 +186,7 @@ export default function TopBar() {
     };
 
     return (
+        <>
         <div className="flex items-center bg-studio-surface border-b border-studio-border select-none"
             style={{ WebkitAppRegion: 'drag' }}>
             {/* Logo */}
@@ -319,5 +320,6 @@ export default function TopBar() {
                 </div>
             </div>
         )}
+        </>
     );
 }
