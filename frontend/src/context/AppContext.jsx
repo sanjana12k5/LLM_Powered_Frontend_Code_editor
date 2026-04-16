@@ -24,6 +24,9 @@ const initialState = {
     issues: [],
     analysisRunning: false,
 
+    // Navigation
+    scrollTarget: null, // { path, line, column, randomId }
+
     // Status
     statusMessage: 'Ready',
 
@@ -133,6 +136,9 @@ function appReducer(state, action) {
 
         case 'LEAVE_COLLAB_ROOM':
             return { ...state, collabRoomId: null, collabMessages: [] };
+
+        case 'SET_SCROLL_TARGET':
+            return { ...state, scrollTarget: action.payload };
 
         default:
             return state;

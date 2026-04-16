@@ -152,4 +152,15 @@
   .typing-indicator span:nth-child(2) {
     animation-delay: -0.16s;
   }
+  
+  .remote-cursor {
+    border-left: 2px solid #58a6ff;
+    position: relative;
+    z-index: 50;
+  }
+  
+  .remote-selection {
+    background-color: rgba(88, 166, 255, 0.3);
+    border-radius: 2px;
+  }
 }

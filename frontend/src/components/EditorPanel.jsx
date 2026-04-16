@@ -5,7 +5,7 @@ import { socket } from '../socket';
 import { 
     X, Circle, Code2, Columns, Map as SidebarRight, WrapText, Wand2, Sun, Moon, ChevronRight,
     Search, Replace, Navigation, ZoomIn, ZoomOut, Settings, FileCode,
-    MoreVertical, Copy, Trash2, Pencil
+    MoreVertical, Copy, Trash2, Pencil, Share2
 } from 'lucide-react';
 
 export default function EditorPanel() {
@@ -36,6 +36,8 @@ export default function EditorPanel() {
     
     const editorRefMain = useRef(null);
     const editorRefSplit = useRef(null);
+    const monacoRef = useRef(null);
+    const remoteDecorationsRef = useRef({});
 
     const activeFile = state.openFiles[state.activeFileIndex];
     const splitFile = state.openFiles[splitFileIndex === -1 ? state.activeFileIndex : splitFileIndex];
@@ -102,19 +104,29 @@ export default function EditorPanel() {
         if (!editor) return;
         const disposable = editor.onDidChangeCursorSelection((e) => {
             const sel = e.selection;
+            const currentSelection = {
+                startLine: sel.startLineNumber,
+                startCol: sel.startColumn,
+                endLine: sel.endLineNumber,
+                endCol: sel.endColumn
+            };
             if (sel.startLineNumber !== sel.endLineNumber || sel.startColumn !== sel.endColumn) {
-                setSelection({
-                    startLine: sel.startLineNumber,
-                    startCol: sel.startColumn,
-                    endLine: sel.endLineNumber,
-                    endCol: sel.endColumn
-                });
+                setSelection(currentSelection);
             } else {
                 setSelection(null);
             }
+
+            if (state.collabRoomId && activeFile) {
+                socket.emit('cursor-update', {
+                    roomId: state.collabRoomId,
+                    fileId: activeFile.path,
+                    selection: currentSelection,
+                    cursorPosition: { line: e.position.lineNumber, column: e.position.column }
+                });
+            }
         });
         return () => disposable.dispose();
-    }, [activeFile]);
+    }, [activeFile, state.collabRoomId]);
 
     // Handle find
     const handleFind = useCallback(() => {
@@ -177,6 +189,77 @@ export default function EditorPanel() {
         setGoToLine('');
     }, [goToLine]);
 
+    const handleShareSnippet = () => {
+        if (!state.collabRoomId || !activeFile) {
+            dispatch({ type: 'SET_STATUS', payload: 'Must be in a room to share snippets' });
+            return;
+        }
+        const editor = editorRefMain.current;
+        if (!editor) return;
+        
+        const selectionRange = editor.getSelection();
+        if (selectionRange.isEmpty()) {
+            dispatch({ type: 'SET_STATUS', payload: 'Select some code to share' });
+            return;
+        }
+
+        const selectedText = editor.getModel().getValueInRange(selectionRange);
+
+        socket.emit('chat-message', {
+            roomId: state.collabRoomId,
+            message: `Shared snippet from ${activeFile.name}`,
+            type: 'snippet',
+            snippetData: {
+                code: selectedText,
+                language: activeFile.language,
+                path: activeFile.path,
+                startLine: selectionRange.startLineNumber,
+                endLine: selectionRange.endLineNumber
+            }
+        });
+        dispatch({ type: 'SET_STATUS', payload: 'Snippet shared to chat' });
+    };
+
+    useEffect(() => {
+        if (!state.scrollTarget || !activeFile || !editorRefMain.current) return;
+        if (state.scrollTarget.path === activeFile.path) {
+            const editor = editorRefMain.current;
+            const line = state.scrollTarget.line || 1;
+            editor.revealLineInCenter(line);
+            editor.setPosition({ lineNumber: line, column: 1 });
+            dispatch({ type: 'SET_SCROLL_TARGET', payload: null });
+        }
+    }, [state.scrollTarget, activeFile, dispatch]);
+
+    useEffect(() => {
+        const handleRemoteCursor = ({ userId, fileId, selection, cursorPosition }) => {
+            if (!activeFile || fileId !== activeFile.path || !editorRefMain.current || !monacoRef.current) return;
+            const editor = editorRefMain.current;
+            const monaco = monacoRef.current;
+
+            if (!remoteDecorationsRef.current[userId]) {
+                remoteDecorationsRef.current[userId] = editor.createDecorationsCollection([]);
+            }
+
+            const decs = [];
+            if (selection && (selection.startLine !== selection.endLine || selection.startCol !== selection.endCol)) {
+                decs.push({
+                    range: new monaco.Range(selection.startLine, selection.startCol, selection.endLine, selection.endCol),
+                    options: { className: 'remote-selection', stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges }
+                });
+            } else if (cursorPosition) {
+                decs.push({
+                    range: new monaco.Range(cursorPosition.line, cursorPosition.column, cursorPosition.line, cursorPosition.column),
+                    options: { className: 'remote-cursor', isWholeLine: false, stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges }
+                });
+            }
+            remoteDecorationsRef.current[userId].set(decs);
+        };
+
+        socket.on('cursor-update', handleRemoteCursor);
+        return () => socket.off('cursor-update', handleRemoteCursor);
+    }, [activeFile]);
+
     const increaseFontSize = () => {
         setFontSize(prev => Math.min(prev + 1, 24));
     };
@@ -188,6 +271,7 @@ export default function EditorPanel() {
     // Handle keyboard shortcut Ctrl+S inside Monaco
     const handleEditorMountMain = useCallback((editor, monaco) => {
         editorRefMain.current = editor;
+        monacoRef.current = monaco;
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             handleSave();
         });
@@ -325,6 +409,10 @@ export default function EditorPanel() {
                 </div>
                 
                 <div className="flex items-center gap-1.5">
+                    <button onClick={handleShareSnippet} disabled={!activeFile || !state.collabRoomId} className="p-1.5 rounded hover:bg-white/10 text-studio-text-muted hover:text-studio-text disabled:opacity-40" title="Share Snippet to Chat">
+                        <Share2 className="w-3.5 h-3.5 text-blue-400" />
+                    </button>
+                    <div className="w-px h-4 bg-studio-border mx-1"></div>
                     <button onClick={formatDocument} className="p-1.5 rounded hover:bg-white/10 text-studio-text-muted hover:text-studio-text" title="Format Document">
                         <Wand2 className="w-3.5 h-3.5" />
                     </button>

@@ -88,6 +88,10 @@ io.on('connection', (socket) => {
         socket.to(roomId).emit('typing', { userId: socket.id, isTyping });
     });
 
+    socket.on('cursor-update', ({ roomId, fileId, selection, cursorPosition }) => {
+        socket.to(roomId).emit('cursor-update', { userId: socket.id, fileId, selection, cursorPosition });
+    });
+
     socket.on('disconnect', () => {
         console.log(`[Socket] User disconnected: ${socket.id}`);
         if (socket.roomId) {

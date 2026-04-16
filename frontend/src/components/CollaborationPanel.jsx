@@ -169,6 +169,29 @@ export default function CollaborationPanel() {
                                             <p className="text-sm">{msg.message}</p>
                                             <img src={msg.screenshot} alt="Shared Screen" className="rounded border border-studio-border max-w-full cursor-pointer hover:opacity-90" onClick={() => window.open(msg.screenshot)} />
                                         </div>
+                                    ) : msg.type === 'snippet' && msg.snippetData ? (
+                                        <div className="flex flex-col gap-2 w-full">
+                                            <p className="text-sm font-medium">{msg.message}</p>
+                                            <div className="bg-studio-bg border border-studio-border rounded p-2 text-[10px] font-mono overflow-x-auto overflow-y-auto max-h-48 text-studio-text-muted">
+                                                <pre><code>{msg.snippetData.code}</code></pre>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    const existingIndex = state.openFiles.findIndex(f => f.path === msg.snippetData.path);
+                                                    if (existingIndex !== -1) {
+                                                        dispatch({ type: 'SET_ACTIVE_FILE', payload: existingIndex });
+                                                        setTimeout(() => {
+                                                            dispatch({ type: 'SET_SCROLL_TARGET', payload: { path: msg.snippetData.path, line: msg.snippetData.startLine, random: Math.random() } });
+                                                        }, 50);
+                                                    } else {
+                                                        dispatch({ type: 'SET_STATUS', payload: 'File not locally open. Open it first to jump.' });
+                                                    }
+                                                }}
+                                                className="text-[11px] bg-studio-accent/20 px-2 py-1 rounded text-studio-accent hover:bg-studio-accent/40 self-end mt-1 transition-colors"
+                                            >
+                                                Jump to Code
+                                            </button>
+                                        </div>
                                     ) : (
                                         <p className="text-sm break-words">{msg.message}</p>
                                     )}
