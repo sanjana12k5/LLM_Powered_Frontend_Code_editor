@@ -126,6 +126,9 @@ export default function TopBar() {
         dispatch({ type: 'SET_STATUS', payload: `Saved ${modifiedFiles.length} file(s)` });
     };
 
+    const [showCollabModal, setShowCollabModal] = useState(false);
+    const [collabInput, setCollabInput] = useState('');
+
     const handleCollaborate = () => {
         if (state.collabRoomId) {
             if (window.confirm('Leave current collaboration room?')) {
@@ -135,7 +138,12 @@ export default function TopBar() {
             return;
         }
 
-        const action = window.prompt('Enter "create" to host a new room, or enter an existing Room ID to join:');
+        setShowCollabModal(true);
+    };
+
+    const submitCollabRoom = (e) => {
+        e.preventDefault();
+        const action = collabInput.trim();
         if (!action) return;
 
         let roomId = action.toLowerCase() === 'create' 
@@ -148,6 +156,9 @@ export default function TopBar() {
         socket.emit('join-room', roomId);
         dispatch({ type: 'SET_COLLAB_ROOM', payload: roomId });
         dispatch({ type: 'SET_STATUS', payload: `Joined Room: ${roomId}` });
+        
+        setShowCollabModal(false);
+        setCollabInput('');
     };
 
     const handleRunProject = async (isDebug) => {
@@ -317,6 +328,46 @@ export default function TopBar() {
                             Close
                         </button>
                     </div>
+                </div>
+            </div>
+        )}
+        {/* Collab Modal */}
+        {showCollabModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCollabModal(false)}>
+                <div 
+                    className="bg-studio-surface border border-studio-border rounded-lg shadow-2xl w-[400px] overflow-hidden flex flex-col"
+                    onClick={e => e.stopPropagation()}
+                >
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-studio-border">
+                        <h2 className="text-sm font-semibold text-studio-text flex items-center gap-2">
+                            <Users className="w-4 h-4 text-studio-accent" />
+                            Join Collaboration Room
+                        </h2>
+                        <button onClick={() => setShowCollabModal(false)} className="p-1 rounded hover:bg-studio-surface-hover">
+                            <XCircle className="w-5 h-5 text-studio-text-muted" />
+                        </button>
+                    </div>
+                    <form onSubmit={submitCollabRoom} className="p-4">
+                        <label className="block text-xs text-studio-text-muted mb-2">
+                            Enter "create" to host a new room, or enter an existing Room ID to join:
+                        </label>
+                        <input 
+                            type="text" 
+                            value={collabInput}
+                            onChange={(e) => setCollabInput(e.target.value)}
+                            placeholder="e.g. create or G7T2X"
+                            className="w-full bg-studio-bg border border-studio-border rounded-lg px-3 py-2 text-sm text-studio-text outline-none focus:border-studio-accent font-mono mb-4"
+                            autoFocus
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button type="button" onClick={() => setShowCollabModal(false)} className="px-3 py-1.5 bg-studio-surface text-studio-text text-sm rounded hover:bg-studio-surface-hover">
+                                Cancel
+                            </button>
+                            <button type="submit" className="px-3 py-1.5 bg-studio-accent text-white text-sm rounded hover:bg-studio-accent-hover font-medium">
+                                Join/Create
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         )}

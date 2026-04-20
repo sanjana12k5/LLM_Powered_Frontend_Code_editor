@@ -4,28 +4,47 @@ import FileExplorer from './FileExplorer';
 import EditorPanel from './EditorPanel';
 import AIPanel from './AIPanel';
 import StatusBar from './StatusBar';
-import TerminalPanel from './TerminalPanel';
+import BottomPanel from './BottomPanel';
 import CollaborationPanel from './CollaborationPanel';
+import ActivityBar from './ActivityBar';
+import GlobalSearch from './GlobalSearch';
+import CommandPalette from './CommandPalette';
+import { useApp } from '../context/AppContext';
 import { Bot, Users } from 'lucide-react';
 import { useState } from 'react';
 
 export default function IDE() {
+    const { state } = useApp();
     const [rightPanelTab, setRightPanelTab] = useState('collab'); // 'collab' or 'ai'
 
     return (
         <div id="ide-root" className="h-screen flex flex-col bg-studio-bg">
             <TopBar />
             <div className="flex-1 flex overflow-hidden">
-                {/* Left Panel - File Explorer */}
-                <div className="w-64 min-w-[200px] max-w-[400px] border-r border-studio-border flex flex-col bg-studio-surface resize-x overflow-auto"
+                {/* Activity Bar (Far Left) */}
+                <ActivityBar />
+
+                {/* Left Panel - Primary Side Bar */}
+                <div className="w-64 min-w-[200px] max-w-[400px] border-r border-studio-border flex flex-col bg-studio-surface resize-x overflow-auto relative z-10"
                     style={{ resize: 'horizontal' }}>
-                    <FileExplorer />
+                    {state.activeSidebarView === 'explorer' && <FileExplorer />}
+                    {state.activeSidebarView === 'search' && <GlobalSearch />}
+                    {state.activeSidebarView === 'source-control' && (
+                        <div className="p-4 text-center text-sm text-studio-text-muted">
+                            Source control views are coming soon.
+                        </div>
+                    )}
+                    {state.activeSidebarView === 'extensions' && (
+                        <div className="p-4 text-center text-sm text-studio-text-muted">
+                            Extensions view is coming soon.
+                        </div>
+                    )}
                 </div>
 
                 {/* Center Panel - Editor */}
                 <div className="flex-1 flex flex-col min-w-[300px] overflow-hidden">
                     <EditorPanel />
-                    <TerminalPanel />
+                    <BottomPanel />
                 </div>
 
                 {/* Right Panel */}
@@ -61,6 +80,7 @@ export default function IDE() {
                 </div>
             </div>
             <StatusBar />
+            <CommandPalette />
         </div>
     );
 }

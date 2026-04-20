@@ -27,16 +27,16 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #0d1117;
+    background: #07080a;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #30363d;
+    background: #272a38;
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #484f58;
+    background: #3b4055;
   }
 }
 
@@ -76,7 +76,7 @@
   
   .glass-effect {
     backdrop-filter: blur(12px);
-    background: rgba(22, 27, 34, 0.8);
+    background: rgba(17, 18, 24, 0.8);
   }
   
   input[type="checkbox"] {

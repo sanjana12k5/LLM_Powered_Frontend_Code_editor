@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { socket } from '../socket';
-import { Send, Camera, UserPlus, Users, Image as ImageIcon } from 'lucide-react';
+import { Send, Camera, UserPlus, Users, Image as ImageIcon, Activity, Link as LinkIcon } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 export default function CollaborationPanel() {
@@ -215,14 +215,48 @@ export default function CollaborationPanel() {
 
             {/* Input Area */}
             <div className="p-3 bg-studio-surface border-t border-studio-border">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mb-2">
                     <button 
                         onClick={handleShareScreenshot}
-                        className="p-2 text-studio-text-muted hover:text-studio-text hover:bg-white/5 rounded-lg transition-colors"
+                        className="px-2 py-1 flex items-center gap-1.5 text-xs bg-studio-bg hover:bg-white/5 border border-studio-border rounded text-studio-text-muted hover:text-studio-text transition-colors"
                         title="Share IDE Screenshot"
                     >
-                        <Camera className="w-4 h-4" />
+                        <Camera className="w-3.5 h-3.5" />
+                        Screenshot
                     </button>
+                    <button 
+                        onClick={() => {
+                            if (!state.collabRoomId) return;
+                            const stats = `Project: ${state.projectName || 'None'}\nOpen Files: ${state.openFiles.length}\nIssues: ${state.issues.length}`;
+                            socket.emit('chat-message', {
+                                roomId: state.collabRoomId,
+                                message: `Session Analytics:\n${stats}`,
+                                type: 'text'
+                            });
+                        }}
+                        className="px-2 py-1 flex items-center gap-1.5 text-xs bg-studio-bg hover:bg-white/5 border border-studio-border rounded text-studio-text-muted hover:text-studio-text transition-colors"
+                        title="Share Analytics"
+                    >
+                        <Activity className="w-3.5 h-3.5 text-studio-info" />
+                        Analytics
+                    </button>
+                    <button 
+                        onClick={() => {
+                            if (!state.collabRoomId) return;
+                            socket.emit('chat-message', {
+                                roomId: state.collabRoomId,
+                                message: `Join me on my local server! http://localhost:5173`,
+                                type: 'text'
+                            });
+                        }}
+                        className="px-2 py-1 flex items-center gap-1.5 text-xs bg-studio-bg hover:bg-white/5 border border-studio-border rounded text-studio-text-muted hover:text-studio-text transition-colors"
+                        title="Share Host Link"
+                    >
+                        <LinkIcon className="w-3.5 h-3.5 text-green-400" />
+                        Host Details
+                    </button>
+                </div>
+                <div className="flex items-center gap-2">
                     <input
                         type="text"
                         value={message}

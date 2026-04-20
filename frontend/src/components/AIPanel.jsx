@@ -164,36 +164,133 @@ function AIMessage({ message }) {
         );
     }
 
+    // Process pending actions
+    const hasEdits = message.edits && message.edits.length > 0;
+    const [acceptedEdits, setAcceptedEdits] = useState(new Set());
+    const [rejectedEdits, setRejectedEdits] = useState(new Set());
+
+    const acceptEdit = async (edit, index) => {
+        try {
+            const absolutePath = state.projectPath ? `${state.projectPath}/${edit.path}` : edit.path;
+            let success = false;
+            
+            if (edit.action === 'delete') {
+                // Not fully implemented yet, just skip or warn
+                dispatch({ type: 'SET_STATUS', payload: `File deletion not yet supported for ${edit.path}` });
+            } else {
+                if (window.electronAPI) {
+                    await window.electronAPI.saveFile(absolutePath, edit.content);
+                    success = true;
+                } else if (state.projectPath) {
+                    await axios.post('/api/save-files', {
+                        files: [{ path: absolutePath, content: edit.content }]
+                    });
+                    success = true;
+                }
+
+                if (success) {
+                    dispatch({
+                        type: 'OPEN_FILE',
+                        payload: {
+                            path: absolutePath,
+                            name: edit.path.split(/[\\/]/).pop(),
+                            content: edit.content,
+                            language: edit.path.split('.').pop()
+                        }
+                    });
+                    dispatch({ type: 'SET_STATUS', payload: `Applied fix to ${edit.path}` });
+                }
+            }
+            setAcceptedEdits(prev => new Set(prev).add(index));
+        } catch (err) {
+            console.error("Failed to accept edit", err);
+            dispatch({ type: 'SET_STATUS', payload: `Failed to apply fix to ${edit.path}` });
+        }
+    };
+
+    const rejectEdit = (index) => {
+        setRejectedEdits(prev => new Set(prev).add(index));
+    };
+
+    const acceptAll = () => {
+        message.edits.forEach((edit, index) => {
+            if (!acceptedEdits.has(index) && !rejectedEdits.has(index)) {
+                acceptEdit(edit, index);
+            }
+        });
+    };
+
     // AI response
     return (
-        <div className="animate-slide-up">
+        <div className="animate-slide-up bg-studio-surface/50 border border-studio-border/30 rounded-xl p-3">
             <div className="flex items-start gap-2">
-                <div className="p-2 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-xl shrink-0 mt-0.5">
+                <div className="p-2 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-xl shrink-0 mt-0.5 shadow-sm shadow-purple-500/10">
                     <Bot className="w-4 h-4 text-purple-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="bg-gradient-to-br from-white/5 to-white/0 border border-white/5 rounded-xl rounded-tl-sm p-3">
-                        <p className="text-xs text-studio-text leading-relaxed whitespace-pre-wrap">
-                            {message.content}
-                        </p>
+                    <p className="text-xs text-studio-text leading-relaxed whitespace-pre-wrap">
+                        {message.content}
+                    </p>
 
-                        {message.fixedCode && (
-                            <div className="mt-3">
-                                <CodeBlock code={message.fixedCode} language={message.language || 'javascript'} />
-
-                                {message.fixFile && (
+                    {hasEdits && (
+                        <div className="mt-4 border-t border-studio-border/50 pt-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-semibold text-studio-text-muted flex items-center gap-1">
+                                    <FileCode className="w-3.5 h-3.5" />
+                                    Proposed Changes ({message.edits.length})
+                                </span>
+                                {message.edits.length > 1 && (
                                     <button
-                                        onClick={() => handleApplyFix(message.fixFile, message.fixedCode)}
-                                        className="mt-3 flex items-center gap-2 px-4 py-2 bg-studio-success/20 text-studio-success rounded-lg text-xs hover:bg-studio-success/30 transition-colors w-full justify-center"
+                                        onClick={acceptAll}
+                                        className="text-[10px] bg-studio-success/20 text-studio-success hover:bg-studio-success/30 px-2 py-1 rounded transition-colors"
                                     >
-                                        <CheckCircle2 className="w-4 h-4" />
-                                        Apply Fix to {message.fixFile.split(/[\\/]/).pop()}
+                                        Accept All
                                     </button>
                                 )}
                             </div>
-                        )}
-                    </div>
-                    <p className="text-[9px] text-studio-text-muted mt-1 ml-1">
+                            <div className="space-y-2">
+                                {message.edits.map((edit, idx) => {
+                                    const isAccepted = acceptedEdits.has(idx);
+                                    const isRejected = rejectedEdits.has(idx);
+                                    const actionColor = edit.action === 'create' ? 'text-green-400' : edit.action === 'delete' ? 'text-red-400' : 'text-blue-400';
+                                    
+                                    return (
+                                        <div key={idx} className={`border border-studio-border rounded-lg bg-studio-bg overflow-hidden transition-all ${isAccepted ? 'opacity-50 grayscale' : isRejected ? 'opacity-30' : ''}`}>
+                                            <div className="flex items-center justify-between px-2.5 py-1.5 bg-studio-surface border-b border-studio-border">
+                                                <div className="flex items-center gap-2 truncate text-[11px]">
+                                                    <span className={`font-mono font-medium ${actionColor} uppercase text-[9px]`}>[{edit.action}]</span>
+                                                    <span className="text-studio-text truncate" title={edit.path}>{edit.path}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 shrink-0 ml-2">
+                                                    {!isAccepted && !isRejected && (
+                                                        <>
+                                                            <button title="Accept" onClick={() => acceptEdit(edit, idx)} className="p-1 hover:bg-studio-success/20 text-studio-success rounded transition-colors">
+                                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button title="Reject" onClick={() => rejectEdit(idx)} className="p-1 hover:bg-studio-error/20 text-studio-error rounded transition-colors">
+                                                                <X className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {isAccepted && <span className="text-[10px] text-studio-success font-medium px-1">Accepted</span>}
+                                                    {isRejected && <span className="text-[10px] text-studio-error font-medium px-1">Rejected</span>}
+                                                </div>
+                                            </div>
+                                            {(!isAccepted && !isRejected && edit.content) && (
+                                                <div className="max-h-32 overflow-hidden hover:max-h-96 transition-all relative group">
+                                                    <div className="absolute inset-x-0 bottom-0 top-16 bg-gradient-to-t from-studio-bg to-transparent pointer-events-none group-hover:opacity-0 transition-opacity"></div>
+                                                    <pre className="p-2 text-[10px] font-mono text-studio-text-muted overflow-x-auto whitespace-pre-wrap">
+                                                        {edit.content}
+                                                    </pre>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                    <p className="text-[9px] text-studio-text-muted mt-2 ml-1 opacity-50">
                         {formatTime(message.timestamp)}
                     </p>
                 </div>
@@ -235,6 +332,15 @@ export default function AIPanel() {
 
         try {
             const activeFile = state.openFiles[state.activeFileIndex];
+            
+            // Collect context from all open files
+            const contextFiles = state.openFiles.map(f => ({
+                path: f.path,
+                name: f.name,
+                content: f.content,
+                language: f.language
+            }));
+
             const context = {
                 message: input,
                 currentFile: activeFile ? {
@@ -243,6 +349,7 @@ export default function AIPanel() {
                     content: activeFile.content,
                     language: activeFile.language
                 } : null,
+                contextFiles: contextFiles,
                 issues: state.issues
             };
 
@@ -253,9 +360,7 @@ export default function AIPanel() {
                 payload: {
                     role: 'assistant',
                     content: res.data.explanation || res.data.response || 'No response from AI.',
-                    fixedCode: res.data.fixedCode,
-                    fixFile: res.data.filePath || activeFile?.path,
-                    language: activeFile?.language,
+                    edits: res.data.edits || [],
                     timestamp: new Date().toISOString()
                 }
             });

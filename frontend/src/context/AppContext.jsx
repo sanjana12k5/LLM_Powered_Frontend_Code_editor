@@ -33,6 +33,9 @@ const initialState = {
     // Collaboration
     collabRoomId: null,
     collabMessages: [], // { id, userId, message, type, screenshot, timestamp }
+    
+    // Layout
+    activeSidebarView: 'explorer', // 'explorer' | 'search' | 'git' | 'extensions'
 };
 
 function appReducer(state, action) {
@@ -51,6 +54,7 @@ function appReducer(state, action) {
                 activeFileIndex: -1,
                 issues: [],
                 aiMessages: [],
+                activeSidebarView: 'explorer',
             };
         }
 
@@ -139,6 +143,9 @@ function appReducer(state, action) {
 
         case 'SET_SCROLL_TARGET':
             return { ...state, scrollTarget: action.payload };
+
+        case 'SET_SIDEBAR_VIEW':
+            return { ...state, activeSidebarView: action.payload };
 
         default:
             return state;

@@ -31,7 +31,9 @@ export default function EditorPanel() {
         autoSave: true,
         bracketPairs: true,
         renderWhitespace: 'none',
-        tabSize: 4
+        tabSize: 4,
+        stickyScroll: true,
+        guides: true
     });
     
     const editorRefMain = useRef(null);
@@ -394,18 +396,7 @@ export default function EditorPanel() {
             {/* Toolbar */}
             <div className="flex items-center justify-between px-3 py-1.5 bg-studio-surface border-b border-studio-border shrink-0">
                 <div className="flex items-center gap-2 text-xs text-studio-text-muted">
-                    {activeFile ? (
-                        <>
-                            <span className="truncate max-w-[300px]" title={activeFile.path}>
-                                {activeFile.path.split(/[\\/]/).map((part, i, arr) => (
-                                    <React.Fragment key={i}>
-                                        <span>{part}</span>
-                                        {i < arr.length - 1 && <ChevronRight className="inline w-3 h-3 mx-0.5" />}
-                                    </React.Fragment>
-                                ))}
-                            </span>
-                        </>
-                    ) : <span>No specific file tracked</span>}
+                    {/* Kept empty or for other global editor context if needed later, but breadcrumbs are moved to panes */}
                 </div>
                 
                 <div className="flex items-center gap-1.5">
@@ -600,6 +591,26 @@ export default function EditorPanel() {
                                 <option value="all">All</option>
                             </select>
                         </div>
+                        <div className="border-t border-studio-border pt-2 mt-2">
+                            <label className="flex items-center justify-between text-xs cursor-pointer mb-2">
+                                <span className="text-studio-text-muted">Sticky Scroll</span>
+                                <input 
+                                    type="checkbox" 
+                                    checked={editorSettings.stickyScroll}
+                                    onChange={e => setEditorSettings(s => ({ ...s, stickyScroll: e.target.checked }))}
+                                    className="accent-studio-accent"
+                                />
+                            </label>
+                            <label className="flex items-center justify-between text-xs cursor-pointer">
+                                <span className="text-studio-text-muted">Indentation Guides</span>
+                                <input 
+                                    type="checkbox" 
+                                    checked={editorSettings.guides}
+                                    onChange={e => setEditorSettings(s => ({ ...s, guides: e.target.checked }))}
+                                    className="accent-studio-accent"
+                                />
+                            </label>
+                        </div>
                     </div>
                 </div>
             )}
@@ -609,6 +620,17 @@ export default function EditorPanel() {
                 {/* Primary Editor Pane */}
                 <div className="flex-1 flex flex-col overflow-hidden border-r border-studio-border">
                     {renderTabs(false)}
+                    {/* Breadcrumbs for Main Pane */}
+                    {activeFile && (
+                        <div className="flex items-center gap-1.5 px-4 py-1 bg-studio-bg/50 border-b border-studio-border text-xs text-studio-text-muted shrink-0 shadow-sm z-10 w-full overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                            {activeFile.path.split(/[\\/]/).map((part, i, arr) => (
+                                <React.Fragment key={i}>
+                                    <span className="hover:text-studio-text cursor-pointer transition-colors shrink-0">{part}</span>
+                                    {i < arr.length - 1 && <ChevronRight className="w-3 h-3 text-studio-text-muted/50 shrink-0" />}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    )}
                     <div className="flex-1 overflow-hidden relative">
                         {activeFile && (
                             <Editor
@@ -636,6 +658,8 @@ export default function EditorPanel() {
                                     suggestOnTriggerCharacters: true,
                                     renderWhitespace: editorSettings.renderWhitespace,
                                     tabSize: editorSettings.tabSize,
+                                    stickyScroll: { enabled: editorSettings.stickyScroll },
+                                    guides: { bracketPairs: editorSettings.guides, indentation: editorSettings.guides }
                                 }}
                             />
                         )}
@@ -646,6 +670,17 @@ export default function EditorPanel() {
                 {isSplit && (
                     <div className="flex-1 flex flex-col overflow-hidden">
                         {renderTabs(true)}
+                        {/* Breadcrumbs for Split Pane */}
+                        {splitFile && (
+                            <div className="flex items-center gap-1.5 px-4 py-1 bg-studio-bg/50 border-b border-studio-border text-xs text-studio-text-muted shrink-0 shadow-sm z-10 w-full overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                                {splitFile.path.split(/[\\/]/).map((part, i, arr) => (
+                                    <React.Fragment key={i}>
+                                        <span className="hover:text-studio-text cursor-pointer transition-colors shrink-0">{part}</span>
+                                        {i < arr.length - 1 && <ChevronRight className="w-3 h-3 text-studio-text-muted/50 shrink-0" />}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                        )}
                         <div className="flex-1 overflow-hidden relative">
                             {splitFile && (
                                 <Editor
@@ -673,6 +708,8 @@ export default function EditorPanel() {
                                         suggestOnTriggerCharacters: true,
                                         renderWhitespace: editorSettings.renderWhitespace,
                                         tabSize: editorSettings.tabSize,
+                                        stickyScroll: { enabled: editorSettings.stickyScroll },
+                                        guides: { bracketPairs: editorSettings.guides, indentation: editorSettings.guides }
                                     }}
                                 />
                             )}

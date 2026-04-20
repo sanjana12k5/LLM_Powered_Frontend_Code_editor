@@ -77,25 +77,7 @@ async function queryGemini(prompt) {
             throw new Error('Invalid response format');
         }
 
-        let explanation = text;
-        let fixedCode = null;
-
-        const explanationMatch = text.match(/EXPLANATION:\s*([\s\S]*?)(?=FIXED_CODE:|$)/i);
-        const codeMatch = text.match(/FIXED_CODE:\s*(?:```\w*\n?)?([\s\S]*?)(?:```|$)/i);
-
-        if (explanationMatch || codeMatch) {
-            if (explanationMatch) explanation = explanationMatch[1].trim();
-            if (codeMatch) fixedCode = codeMatch[1].trim();
-        } else {
-            // Intelligent split fallback
-            const codeBlockFallback = text.match(/```(?:\w+)?\n([\s\S]*?)```/);
-            if (codeBlockFallback) {
-                fixedCode = codeBlockFallback[1].trim();
-                explanation = text.replace(codeBlockFallback[0], '').trim();
-            }
-        }
-
-        return { explanation, fixedCode };
+        return text;
     } catch (error) {
         // Log full error response
         console.error('[Gemini API] Request Error:', error.response?.data || error.message);
@@ -112,8 +94,7 @@ async function query(prompt) {
         if (provider === 'gemini') {
             return await queryGemini(prompt);
         } else {
-            const result = await queryOpenAI(prompt);
-            return { explanation: result, fixedCode: null }; // Normalize OpenAI response for now
+            return await queryOpenAI(prompt);
         }
     } catch (err) {
         console.error('[AI Service] Error:', err.message);
