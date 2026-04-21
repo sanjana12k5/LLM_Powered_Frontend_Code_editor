@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { useApp } from '../context/AppContext';
-import { socket } from '../socket';
+import { getSocket } from '../socket';
 import { 
     X, Circle, Code2, Columns, Map as SidebarRight, WrapText, Wand2, Sun, Moon, ChevronRight,
     Search, Replace, Navigation, ZoomIn, ZoomOut, Settings, FileCode,
@@ -48,7 +48,7 @@ export default function EditorPanel() {
         if (state.activeFileIndex >= 0) {
             // Only emit if it's an actual change locally triggered
             if (activeFile && value !== activeFile.content && state.collabRoomId) {
-                socket.emit('code-update', {
+                getSocket().emit('code-update', {
                     roomId: state.collabRoomId,
                     code: value,
                     fileId: activeFile.path
@@ -73,8 +73,9 @@ export default function EditorPanel() {
             }
         };
 
-        socket.on('code-update', handleCodeUpdate);
-        return () => socket.off('code-update', handleCodeUpdate);
+        const sock = getSocket();
+        sock.on('code-update', handleCodeUpdate);
+        return () => sock.off('code-update', handleCodeUpdate);
     }, [state.openFiles, dispatch]);
 
     const handleSave = useCallback(async () => {
@@ -119,7 +120,7 @@ export default function EditorPanel() {
             }
 
             if (state.collabRoomId && activeFile) {
-                socket.emit('cursor-update', {
+                getSocket().emit('cursor-update', {
                     roomId: state.collabRoomId,
                     fileId: activeFile.path,
                     selection: currentSelection,
@@ -207,7 +208,7 @@ export default function EditorPanel() {
 
         const selectedText = editor.getModel().getValueInRange(selectionRange);
 
-        socket.emit('chat-message', {
+        getSocket().emit('chat-message', {
             roomId: state.collabRoomId,
             message: `Shared snippet from ${activeFile.name}`,
             type: 'snippet',
@@ -258,8 +259,9 @@ export default function EditorPanel() {
             remoteDecorationsRef.current[userId].set(decs);
         };
 
-        socket.on('cursor-update', handleRemoteCursor);
-        return () => socket.off('cursor-update', handleRemoteCursor);
+        const sock = getSocket();
+        sock.on('cursor-update', handleRemoteCursor);
+        return () => sock.off('cursor-update', handleRemoteCursor);
     }, [activeFile]);
 
     const increaseFontSize = () => {
@@ -310,7 +312,7 @@ export default function EditorPanel() {
         if (targetIndex >= 0) {
             const currentSplitFile = state.openFiles[targetIndex];
             if (currentSplitFile && value !== currentSplitFile.content && state.collabRoomId) {
-                socket.emit('code-update', {
+                getSocket().emit('code-update', {
                     roomId: state.collabRoomId,
                     code: value,
                     fileId: currentSplitFile.path

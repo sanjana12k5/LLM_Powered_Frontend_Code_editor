@@ -5,7 +5,7 @@ import {
     Bot, Send, AlertTriangle, AlertCircle, Info,
     CheckCircle2, Copy, Loader2,
     ChevronDown, ChevronRight, Sparkles, Zap, Code2,
-    Bug, Lightbulb, Trash2, FileCode, Wand
+    Bug, Lightbulb, Trash2, FileCode, Wand, X
 } from 'lucide-react';
 
 const QUICK_ACTIONS = [
