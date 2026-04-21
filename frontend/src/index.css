@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,6 +15,11 @@
     overflow: hidden;
     height: 100vh;
     user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    color: #cccccc;
+    background: #1e1e1e;
+    -webkit-font-smoothing: antialiased;
   }
 
   #root {
@@ -21,77 +28,114 @@
     flex-direction: column;
   }
 
+  /* VS Code scrollbar styling */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #07080a;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #272a38;
-    border-radius: 4px;
+    background: rgba(121, 121, 121, 0.4);
+    border-radius: 0;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #3b4055;
+    background: rgba(121, 121, 121, 0.7);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
 }
 
 @layer components {
+  /* VS Code exact panel header */
   .panel-header {
-    @apply flex items-center justify-between px-3 py-2 bg-studio-surface border-b border-studio-border text-xs font-semibold uppercase tracking-wider text-studio-text-muted;
+    @apply flex items-center justify-between px-5 py-1;
+    height: 35px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #bbbbbb;
   }
 
   .btn-primary {
-    @apply px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg font-medium text-sm transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-95;
+    @apply px-4 py-1.5 text-white rounded-sm text-xs transition-all duration-100;
+    background: #0e639c;
+  }
+  .btn-primary:hover {
+    background: #1177bb;
   }
 
   .btn-secondary {
-    @apply px-4 py-2 bg-studio-surface hover:bg-studio-surface-hover text-studio-text border border-studio-border rounded-lg font-medium text-sm transition-all duration-200 active:scale-95;
+    @apply px-4 py-1.5 rounded-sm text-xs transition-all duration-100;
+    background: transparent;
+    color: #cccccc;
+    border: 1px solid #3c3c3c;
+  }
+  .btn-secondary:hover {
+    background: #2a2d2e;
   }
 
   .btn-ghost {
-    @apply px-3 py-1.5 hover:bg-studio-surface-hover text-studio-text-muted hover:text-studio-text rounded-md text-sm transition-all duration-150;
+    @apply px-2 py-1 rounded-sm text-xs transition-all duration-100;
+    color: #cccccc;
+  }
+  .btn-ghost:hover {
+    background: rgba(90, 93, 94, 0.31);
   }
 
   .glass-card {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl;
+    background: #252526;
+    border: 1px solid #3c3c3c;
+    border-radius: 6px;
   }
 
-  .glow-border {
-    @apply border border-studio-accent/30 shadow-lg shadow-studio-accent/10;
+  /* VS Code menu item */
+  .menu-item {
+    @apply flex items-center gap-3 px-6 py-1 text-xs cursor-pointer;
+    color: #cccccc;
   }
-  
-  .animate-pulse-subtle {
-    animation: pulseSubtle 2s ease-in-out infinite;
+  .menu-item:hover {
+    background: #04395e;
+    color: #ffffff;
   }
-  
-  @keyframes pulseSubtle {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+
+  /* VS Code input styling */
+  .vscode-input {
+    background: #3c3c3c;
+    color: #cccccc;
+    border: 1px solid #3c3c3c;
+    outline: none;
+    font-size: 13px;
+    padding: 3px 6px;
   }
-  
-  .glass-effect {
-    backdrop-filter: blur(12px);
-    background: rgba(17, 18, 24, 0.8);
+  .vscode-input:focus {
+    border-color: #007acc;
   }
-  
+  .vscode-input::placeholder {
+    color: #858585;
+  }
+
+  /* Checkbox override */
   input[type="checkbox"] {
     appearance: none;
     width: 16px;
     height: 16px;
-    border: 1px solid #30363d;
+    border: 1px solid #3c3c3c;
     border-radius: 3px;
-    background: #0d1117;
+    background: #3c3c3c;
     cursor: pointer;
   }
   
   input[type="checkbox"]:checked {
-    background: #58a6ff;
-    border-color: #58a6ff;
+    background: #007acc;
+    border-color: #007acc;
   }
   
   input[type="checkbox"]:checked::after {
@@ -110,57 +154,34 @@
   
   select:focus {
     outline: none;
-    border-color: #58a6ff;
+    border-color: #007acc;
   }
-  
-  .animate-slide-in {
-    animation: slideIn 0.2s ease-out;
-  }
-  
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out;
-  }
-  
-  @keyframes bounce-dot {
-    0%, 80%, 100% {
-      transform: translateY(0);
-    }
-    40% {
-      transform: translateY(-4px);
-    }
-  }
-  
-  .typing-indicator span {
-    animation: bounce-dot 1.4s infinite ease-in-out both;
-  }
-  
-  .typing-indicator span:nth-child(1) {
-    animation-delay: -0.32s;
-  }
-  
-  .typing-indicator span:nth-child(2) {
-    animation-delay: -0.16s;
-  }
-  
+
+  /* Remote cursors for collab */
   .remote-cursor {
-    border-left: 2px solid #58a6ff;
+    border-left: 2px solid #007acc;
     position: relative;
     z-index: 50;
   }
   
   .remote-selection {
-    background-color: rgba(88, 166, 255, 0.3);
-    border-radius: 2px;
+    background-color: rgba(0, 122, 204, 0.3);
+    border-radius: 0;
+  }
+
+  /* Typing indicator */
+  .typing-indicator span {
+    animation: bounce-dot 1.4s infinite ease-in-out both;
+  }
+  .typing-indicator span:nth-child(1) {
+    animation-delay: -0.32s;
+  }
+  .typing-indicator span:nth-child(2) {
+    animation-delay: -0.16s;
+  }
+
+  @keyframes bounce-dot {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-4px); }
   }
 }

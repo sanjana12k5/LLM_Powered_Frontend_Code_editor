@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Circle, AlertTriangle, Check, Code, FileCode, GitBranch, Keyboard } from 'lucide-react';
+import { AlertTriangle, X as XIcon, Check, GitBranch, Bell, BellOff } from 'lucide-react';
 
 export default function StatusBar() {
     const { state } = useApp();
@@ -17,56 +17,70 @@ export default function StatusBar() {
             'plaintext': 'Plain Text',
             'yaml': 'YAML',
             'python': 'Python',
-            'java': 'Java',
-            'csharp': 'C#',
-            'cpp': 'C++',
         };
-        return labels[lang] || lang;
+        return labels[lang] || lang || 'Plain Text';
     };
 
+    const errorCount = state.issues?.filter(i => i.severity === 'error').length || 0;
+    const warningCount = state.issues?.length || 0;
+
     return (
-        <div className="flex items-center justify-between px-3 py-1 bg-gradient-to-r from-studio-accent/90 to-purple-600/90 text-white text-[11px] select-none h-6">
-            <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1.5">
-                    <Circle className="w-2 h-2 fill-green-400 text-green-400" />
-                    <span className="max-w-[200px] truncate">{state.statusMessage}</span>
-                </span>
-                {state.issues.length > 0 && (
-                    <span className="flex items-center gap-1 text-yellow-300">
-                        <AlertTriangle className="w-3 h-3" />
-                        {state.issues.length} issue{state.issues.length !== 1 ? 's' : ''}
-                    </span>
-                )}
+        <div 
+            className="flex items-center justify-between px-2 select-none shrink-0"
+            style={{ 
+                background: state.collabRoomId ? '#388a34' : '#007acc', 
+                height: '22px',
+                fontSize: '12px',
+                color: '#ffffff',
+            }}
+        >
+            {/* Left side */}
+            <div className="flex items-center gap-0">
+                {/* Branch */}
+                <button className="flex items-center gap-1 px-1.5 h-full hover:bg-white/10 transition-colors">
+                    <GitBranch className="w-[14px] h-[14px]" />
+                    <span>main</span>
+                </button>
+
+                {/* Errors & Warnings */}
+                <button className="flex items-center gap-1 px-1.5 h-full hover:bg-white/10 transition-colors">
+                    <XIcon className="w-[14px] h-[14px]" />
+                    <span>{errorCount}</span>
+                    <AlertTriangle className="w-[14px] h-[14px] ml-1" />
+                    <span>{warningCount}</span>
+                </button>
+
                 {state.collabRoomId && (
-                    <span className="flex items-center gap-1 text-green-300">
-                        <GitBranch className="w-3 h-3" />
-                        {state.collabRoomId}
-                    </span>
+                    <button className="flex items-center gap-1 px-1.5 h-full hover:bg-white/10 transition-colors">
+                        <span>Room: {state.collabRoomId}</span>
+                    </button>
                 )}
             </div>
-            <div className="flex items-center gap-4">
+
+            {/* Right side */}
+            <div className="flex items-center gap-0">
                 {activeFile ? (
                     <>
-                        <span className="flex items-center gap-1">
-                            <Code className="w-3 h-3" />
-                            Ln {1}, Col {1}
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <FileCode className="w-3 h-3" />
-                            {getLanguageLabel(activeFile.language)}
-                        </span>
-                        <span>UTF-8</span>
-                        <span>Spaces: 4</span>
+                        <button className="flex items-center gap-1 px-1.5 h-full hover:bg-white/10 transition-colors">
+                            <span>Ln 1, Col 1</span>
+                        </button>
+                        <button className="flex items-center gap-1 px-1.5 h-full hover:bg-white/10 transition-colors">
+                            <span>Spaces: 4</span>
+                        </button>
+                        <button className="flex items-center gap-1 px-1.5 h-full hover:bg-white/10 transition-colors">
+                            <span>UTF-8</span>
+                        </button>
+                        <button className="flex items-center gap-1 px-1.5 h-full hover:bg-white/10 transition-colors">
+                            <span>CRLF</span>
+                        </button>
+                        <button className="flex items-center gap-1 px-1.5 h-full hover:bg-white/10 transition-colors">
+                            <span>{getLanguageLabel(activeFile.language)}</span>
+                        </button>
                     </>
                 ) : null}
-                <span className="flex items-center gap-1 opacity-75">
-                    <Keyboard className="w-3 h-3" />
-                    Ctrl+S Save
-                </span>
-                <span className="flex items-center gap-1">
-                    <Check className="w-3 h-3" />
-                    AI Diagnostic Studio
-                </span>
+                <button className="flex items-center gap-1 px-1.5 h-full hover:bg-white/10 transition-colors">
+                    <Bell className="w-[14px] h-[14px]" />
+                </button>
             </div>
         </div>
     );

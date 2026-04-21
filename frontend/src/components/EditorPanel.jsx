@@ -337,15 +337,19 @@ export default function EditorPanel() {
 
     if (state.openFiles.length === 0) {
         return (
-            <div className="flex-1 flex items-center justify-center bg-studio-editor">
-                <div className="text-center animate-fade-in">
-                    <Code2 className="w-16 h-16 mx-auto mb-4 text-studio-text-muted/20" />
-                    <h3 className="text-studio-text-muted text-lg mb-2">No file open</h3>
-                    <p className="text-studio-text-muted/60 text-sm">
-                        Select a file from the explorer to start editing
-                    </p>
-                    <div className="mt-6 text-xs text-studio-text-muted/40 space-y-1">
-                        <p>Ctrl+S to save</p>
+            <div className="flex-1 flex items-center justify-center" style={{ background: '#1e1e1e' }}>
+                <div className="text-center">
+                    <h2 className="text-[28px] font-light mb-1" style={{ color: '#cccccc' }}>AI Code Editor</h2>
+                    <p className="text-[13px] mb-8" style={{ color: '#858585' }}>Editing evolved</p>
+                    <div className="text-left mx-auto" style={{ maxWidth: '300px' }}>
+                        <h3 className="text-[13px] mb-2" style={{ color: '#cccccc' }}>Start</h3>
+                        <div className="space-y-1">
+                            <button className="flex items-center gap-2 text-[13px] hover:underline" style={{ color: '#3794ff' }}>New File...</button>
+                            <button className="flex items-center gap-2 text-[13px] hover:underline" style={{ color: '#3794ff' }}>Open File...</button>
+                            <button className="flex items-center gap-2 text-[13px] hover:underline" style={{ color: '#3794ff' }}>Open Folder...</button>
+                        </div>
+                        <h3 className="text-[13px] mt-6 mb-2" style={{ color: '#cccccc' }}>Recent</h3>
+                        <div className="text-[13px]" style={{ color: '#858585' }}>No recent folders</div>
                     </div>
                 </div>
             </div>
@@ -353,8 +357,10 @@ export default function EditorPanel() {
     }
 
     const renderTabs = (isSplitPane = false) => (
-        <div className="flex bg-studio-surface border-b border-studio-border overflow-x-auto shrink-0"
-            style={{ scrollbarWidth: 'none' }}>
+        <div 
+            className="flex overflow-x-auto shrink-0"
+            style={{ scrollbarWidth: 'none', background: '#2d2d2d', height: '35px' }}
+        >
             {state.openFiles.map((file, index) => {
                 const isActive = isSplitPane ? index === (splitFileIndex === -1 ? state.activeFileIndex : splitFileIndex) : index === state.activeFileIndex;
                 return (
@@ -364,14 +370,19 @@ export default function EditorPanel() {
                             if (isSplitPane) setSplitFileIndex(index);
                             else dispatch({ type: 'SET_ACTIVE_FILE', payload: index });
                         }}
-                        className={`group flex items-center gap-2 px-3 py-2 cursor-pointer border-r border-studio-border min-w-0 shrink-0 transition-colors ${isActive
-                                ? 'bg-studio-tab-active border-t-2 border-t-blue-500 text-studio-text'
-                                : 'bg-studio-tab text-studio-text-muted hover:bg-studio-surface-hover hover:text-studio-text border-t-2 border-t-transparent'
-                            }`}
+                        className="group flex items-center gap-1.5 px-3 cursor-pointer min-w-0 shrink-0 h-full"
+                        style={{
+                            background: isActive ? '#1e1e1e' : '#2d2d2d',
+                            color: isActive ? '#ffffff' : '#969696',
+                            borderRight: '1px solid #252526',
+                            fontSize: '13px',
+                        }}
+                        onMouseOver={e => { if (!isActive) e.currentTarget.style.background = '#2a2d2e'; }}
+                        onMouseOut={e => { if (!isActive) e.currentTarget.style.background = '#2d2d2d'; }}
                     >
-                        <span className="text-xs truncate max-w-[120px]" title={file.path}>{file.name}</span>
+                        <span className="truncate max-w-[150px]" title={file.path}>{file.name}</span>
                         {file.modified && (
-                            <Circle className="w-2 h-2 fill-blue-400 text-blue-400 shrink-0" />
+                            <Circle className="w-2 h-2 shrink-0" style={{ fill: '#ffffff', color: '#ffffff' }} />
                         )}
                         <button
                             onClick={(e) => {
@@ -381,9 +392,9 @@ export default function EditorPanel() {
                                     setSplitFileIndex(-1);
                                 }
                             }}
-                            className="ml-1 p-0.5 rounded hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="ml-0.5 p-0.5 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10"
                         >
-                            <X className="w-3 h-3" />
+                            <X className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 );
@@ -392,11 +403,10 @@ export default function EditorPanel() {
     );
 
     return (
-        <div className="flex-1 flex flex-col bg-studio-editor overflow-hidden relative">
+        <div className="flex-1 flex flex-col overflow-hidden relative" style={{ background: '#1e1e1e' }}>
             {/* Toolbar */}
-            <div className="flex items-center justify-between px-3 py-1.5 bg-studio-surface border-b border-studio-border shrink-0">
-                <div className="flex items-center gap-2 text-xs text-studio-text-muted">
-                    {/* Kept empty or for other global editor context if needed later, but breadcrumbs are moved to panes */}
+            <div className="flex items-center justify-between px-2 h-[30px] shrink-0" style={{ background: '#252526', borderBottom: '1px solid #3c3c3c' }}>
+                <div className="flex items-center gap-2 text-[12px]" style={{ color: '#858585' }}>
                 </div>
                 
                 <div className="flex items-center gap-1.5">
@@ -618,15 +628,23 @@ export default function EditorPanel() {
             {/* Editor Area (Flex Row for Split) */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Primary Editor Pane */}
-                <div className="flex-1 flex flex-col overflow-hidden border-r border-studio-border">
+                <div className="flex-1 flex flex-col overflow-hidden" style={{ borderRight: isSplit ? '1px solid #3c3c3c' : 'none' }}>
                     {renderTabs(false)}
                     {/* Breadcrumbs for Main Pane */}
                     {activeFile && (
-                        <div className="flex items-center gap-1.5 px-4 py-1 bg-studio-bg/50 border-b border-studio-border text-xs text-studio-text-muted shrink-0 shadow-sm z-10 w-full overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                        <div 
+                            className="flex items-center gap-1 px-3 h-[22px] overflow-x-auto shrink-0" 
+                            style={{ scrollbarWidth: 'none', background: '#1e1e1e', borderBottom: '1px solid #3c3c3c', fontSize: '12px' }}
+                        >
                             {activeFile.path.split(/[\\/]/).map((part, i, arr) => (
                                 <React.Fragment key={i}>
-                                    <span className="hover:text-studio-text cursor-pointer transition-colors shrink-0">{part}</span>
-                                    {i < arr.length - 1 && <ChevronRight className="w-3 h-3 text-studio-text-muted/50 shrink-0" />}
+                                    <span 
+                                        className="cursor-pointer shrink-0 hover:underline" 
+                                        style={{ color: '#a0a0a0' }}
+                                    >
+                                        {part}
+                                    </span>
+                                    {i < arr.length - 1 && <ChevronRight className="w-3 h-3 shrink-0" style={{ color: '#6c6c6c' }} />}
                                 </React.Fragment>
                             ))}
                         </div>
@@ -672,11 +690,19 @@ export default function EditorPanel() {
                         {renderTabs(true)}
                         {/* Breadcrumbs for Split Pane */}
                         {splitFile && (
-                            <div className="flex items-center gap-1.5 px-4 py-1 bg-studio-bg/50 border-b border-studio-border text-xs text-studio-text-muted shrink-0 shadow-sm z-10 w-full overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                            <div 
+                                className="flex items-center gap-1 px-3 h-[22px] overflow-x-auto shrink-0" 
+                                style={{ scrollbarWidth: 'none', background: '#1e1e1e', borderBottom: '1px solid #3c3c3c', fontSize: '12px' }}
+                            >
                                 {splitFile.path.split(/[\\/]/).map((part, i, arr) => (
                                     <React.Fragment key={i}>
-                                        <span className="hover:text-studio-text cursor-pointer transition-colors shrink-0">{part}</span>
-                                        {i < arr.length - 1 && <ChevronRight className="w-3 h-3 text-studio-text-muted/50 shrink-0" />}
+                                        <span 
+                                            className="cursor-pointer shrink-0 hover:underline" 
+                                            style={{ color: '#a0a0a0' }}
+                                        >
+                                            {part}
+                                        </span>
+                                        {i < arr.length - 1 && <ChevronRight className="w-3 h-3 shrink-0" style={{ color: '#6c6c6c' }} />}
                                     </React.Fragment>
                                 ))}
                             </div>

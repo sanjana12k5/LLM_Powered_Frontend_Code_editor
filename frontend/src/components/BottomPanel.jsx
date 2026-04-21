@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Terminal as TerminalIcon, Trash2, ChevronDown, ChevronUp, StopCircle, MessageSquareWarning, Braces } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp, StopCircle, X, Maximize2, Plus, MoreHorizontal } from 'lucide-react';
 
 export default function BottomPanel() {
     const { state } = useApp();
     const [isOpen, setIsOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('terminal'); // 'terminal', 'output', 'problems'
+    const [activeTab, setActiveTab] = useState('terminal');
     
-    // Terminal State
     const [output, setOutput] = useState('');
     const [command, setCommand] = useState('');
     const [isRunning, setIsRunning] = useState(false);
@@ -16,43 +15,32 @@ export default function BottomPanel() {
 
     useEffect(() => {
         if (!window.electronAPI) return;
-
         const cleanup = window.electronAPI.onTerminalOutput((data) => {
             setOutput((prev) => prev + data);
             setIsOpen(true);
             setActiveTab('terminal');
-            if (data.includes('[Process exited')) {
-                setIsRunning(false);
-            }
+            if (data.includes('[Process exited')) setIsRunning(false);
         });
-
         return cleanup;
     }, []);
 
     useEffect(() => {
-        if (state.projectPath && !currentPath) {
-            setCurrentPath(state.projectPath);
-        }
+        if (state.projectPath && !currentPath) setCurrentPath(state.projectPath);
     }, [state.projectPath, currentPath]);
 
     useEffect(() => {
-        if (outputRef.current) {
-            outputRef.current.scrollTop = outputRef.current.scrollHeight;
-        }
+        if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }, [output, isOpen, activeTab]);
 
     const handleRunCommand = async (e) => {
         if (e.key === 'Enter' && command.trim()) {
             const cmd = command.trim();
             setCommand('');
-            
             const displayPath = currentPath || state.projectPath || '~';
             setOutput((prev) => prev + `\n${displayPath}> ${cmd}\n`);
-            
             try {
                 const activePath = currentPath || state.projectPath;
                 const res = await window.electronAPI.runCommand(cmd, activePath);
-                
                 if (res.stdout) setOutput((prev) => prev + res.stdout);
                 if (res.stderr) setOutput((prev) => prev + res.stderr);
                 if (res.error) setOutput((prev) => prev + `Error: ${res.error}\n`);
@@ -63,12 +51,7 @@ export default function BottomPanel() {
         }
     };
 
-    const handleClear = () => {
-        if (activeTab === 'terminal') setOutput('');
-    };
-
-    const togglePanel = () => setIsOpen(!isOpen);
-
+    const handleClear = () => setOutput('');
     const killProcess = () => {
         if (window.electronAPI) {
             window.electronAPI.killTerminalProcess();
@@ -77,84 +60,101 @@ export default function BottomPanel() {
         }
     };
 
+    const errorCount = state.issues?.filter(i => i.severity === 'error').length || 0;
+    const warningCount = state.issues?.length || 0;
+
     return (
-        <div className="flex flex-col border-t border-studio-border bg-studio-surface z-20">
-            {/* Panel Tabs / Header */}
-            <div className="flex items-center justify-between px-3 cursor-pointer bg-studio-surface select-none">
-                <div className="flex items-center gap-1">
-                    <button 
-                        onClick={() => { setActiveTab('problems'); setIsOpen(true); }}
-                        className={`px-3 py-2 text-xs uppercase tracking-wider font-semibold border-b-2 transition-colors ${activeTab === 'problems' && isOpen ? 'border-studio-accent text-studio-text' : 'border-transparent text-studio-text-muted hover:text-studio-text'}`}
-                    >
-                        Problems
-                        {state.issues && state.issues.length > 0 && (
-                            <span className="ml-2 bg-studio-accent/20 text-studio-accent px-1.5 py-0.5 rounded-full text-[10px]">
-                                {state.issues.length}
-                            </span>
-                        )}
-                    </button>
-                    <button 
-                        onClick={() => { setActiveTab('output'); setIsOpen(true); }}
-                        className={`px-3 py-2 text-xs uppercase tracking-wider font-semibold border-b-2 transition-colors ${activeTab === 'output' && isOpen ? 'border-studio-accent text-studio-text' : 'border-transparent text-studio-text-muted hover:text-studio-text'}`}
-                    >
-                        Output
-                    </button>
-                    <button 
-                        onClick={() => { setActiveTab('terminal'); setIsOpen(true); }}
-                        className={`px-3 py-2 text-xs uppercase tracking-wider font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'terminal' && isOpen ? 'border-studio-accent text-studio-text' : 'border-transparent text-studio-text-muted hover:text-studio-text'}`}
-                    >
-                        Terminal
-                    </button>
+        <div className="flex flex-col shrink-0" style={{ borderTop: '1px solid #3c3c3c' }}>
+            {/* Panel Tab Bar */}
+            <div 
+                className="flex items-center justify-between shrink-0 h-[35px]"
+                style={{ background: '#1e1e1e' }}
+            >
+                <div className="flex items-center h-full">
+                    {['problems', 'output', 'terminal', 'debug'].map(tab => {
+                        const isActive = activeTab === tab && isOpen;
+                        const label = tab.charAt(0).toUpperCase() + tab.slice(1);
+                        const badge = tab === 'problems' && warningCount > 0 ? warningCount : null;
+                        
+                        return (
+                            <button
+                                key={tab}
+                                onClick={() => {
+                                    if (activeTab === tab && isOpen) {
+                                        setIsOpen(false);
+                                    } else {
+                                        setActiveTab(tab);
+                                        setIsOpen(true);
+                                    }
+                                }}
+                                className="flex items-center gap-1 px-3 h-full text-[11px] uppercase tracking-wider font-medium transition-colors"
+                                style={{
+                                    color: isActive ? '#cccccc' : '#858585',
+                                    borderBottom: isActive ? '1px solid #cccccc' : '1px solid transparent',
+                                    borderTop: isActive ? '1px solid #1e1e1e' : '1px solid transparent',
+                                }}
+                                onMouseOver={e => { if (!isActive) e.currentTarget.style.color = '#cccccc'; }}
+                                onMouseOut={e => { if (!isActive) e.currentTarget.style.color = '#858585'; }}
+                            >
+                                {label}
+                                {badge && (
+                                    <span 
+                                        className="ml-1 px-1.5 py-0 rounded-full text-[10px]"
+                                        style={{ background: '#007acc', color: '#ffffff', fontWeight: 600 }}
+                                    >
+                                        {badge}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
                 
-                <div className="flex items-center gap-1 py-1">
-                    {activeTab === 'terminal' && isRunning && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); killProcess(); }}
-                            className="p-1 hover:bg-white/10 rounded text-red-400 group relative"
-                            title="Stop process"
-                        >
-                            <StopCircle className="w-4 h-4" />
-                        </button>
+                <div className="flex items-center gap-0.5 px-2">
+                    {activeTab === 'terminal' && isOpen && (
+                        <>
+                            <button className="p-1 rounded-sm hover:bg-white/10" style={{ color: '#858585' }} title="New Terminal">
+                                <Plus className="w-[14px] h-[14px]" />
+                            </button>
+                            {isRunning && (
+                                <button onClick={killProcess} className="p-1 rounded-sm hover:bg-white/10" style={{ color: '#f14c4c' }} title="Kill Terminal">
+                                    <StopCircle className="w-[14px] h-[14px]" />
+                                </button>
+                            )}
+                            <button onClick={handleClear} className="p-1 rounded-sm hover:bg-white/10" style={{ color: '#858585' }} title="Clear">
+                                <Trash2 className="w-[14px] h-[14px]" />
+                            </button>
+                        </>
                     )}
-                    {(activeTab === 'terminal' || activeTab === 'output') && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); handleClear(); }}
-                            className="p-1 hover:bg-white/10 rounded text-studio-text-muted hover:text-studio-text"
-                            title="Clear"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    )}
+                    <button className="p-1 rounded-sm hover:bg-white/10" style={{ color: '#858585' }} title="Maximize Panel">
+                        <Maximize2 className="w-[14px] h-[14px]" />
+                    </button>
                     <button 
-                        onClick={(e) => { e.stopPropagation(); togglePanel(); }}
-                        className="p-1 hover:bg-white/10 rounded text-studio-text-muted hover:text-studio-text ml-2"
-                        title={isOpen ? "Collapse Panel" : "Expand Panel"}
+                        onClick={() => setIsOpen(false)} 
+                        className="p-1 rounded-sm hover:bg-white/10" 
+                        style={{ color: '#858585' }} 
+                        title="Close Panel"
                     >
-                        {isOpen ? (
-                            <ChevronDown className="w-4 h-4" />
-                        ) : (
-                            <ChevronUp className="w-4 h-4" />
-                        )}
+                        <X className="w-[14px] h-[14px]" />
                     </button>
                 </div>
             </div>
 
             {/* Panel Content */}
             {isOpen && (
-                <div className="flex flex-col h-48 sm:h-64 border-t border-studio-border bg-studio-editor">
+                <div style={{ height: '200px', background: '#1e1e1e' }}>
                     {activeTab === 'terminal' && (
-                        <>
+                        <div className="flex flex-col h-full">
                             <div 
                                 ref={outputRef}
-                                className="flex-1 p-2 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-[#d4d4d4]"
-                                style={{ fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace" }}
+                                className="flex-1 p-2 overflow-y-auto text-[13px] whitespace-pre-wrap"
+                                style={{ fontFamily: "Consolas, 'Courier New', monospace", color: '#cccccc' }}
                             >
-                                {output || <span className="text-studio-text-muted/50 italic">Terminal ready. Type a command below...</span>}
+                                {output || <span style={{ color: '#858585' }}>Terminal ready. Type a command below...</span>}
                             </div>
-                            <div className="flex items-center border-t border-studio-border px-2 py-1 bg-[#1e1e1e]">
-                                <span className="text-blue-400 font-mono text-xs mr-2 truncate max-w-[50%]" title={currentPath || state.projectPath || '~'}>
-                                    {currentPath || state.projectPath || '~'}&gt;
+                            <div className="flex items-center px-2 py-1" style={{ borderTop: '1px solid #3c3c3c' }}>
+                                <span className="text-[13px] mr-2 truncate max-w-[50%]" style={{ fontFamily: "Consolas, 'Courier New', monospace", color: '#6a9955' }}>
+                                    {currentPath || state.projectPath || 'PS'}&gt;
                                 </span>
                                 <input
                                     type="text"
@@ -162,43 +162,49 @@ export default function BottomPanel() {
                                     onChange={(e) => setCommand(e.target.value)}
                                     onKeyDown={handleRunCommand}
                                     disabled={!state.projectPath && !window.electronAPI}
-                                    placeholder={state.projectPath ? "Enter command..." : "Open a project to run commands"}
-                                    className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-white placeholder-studio-text-muted/50"
+                                    placeholder={state.projectPath ? "" : "Open a project first"}
+                                    className="flex-1 bg-transparent border-none outline-none text-[13px]"
+                                    style={{ fontFamily: "Consolas, 'Courier New', monospace", color: '#cccccc' }}
                                 />
                             </div>
-                        </>
+                        </div>
                     )}
 
                     {activeTab === 'output' && (
-                        <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-studio-text-muted">
-                            {/* Typically output from language servers, extensions, etc. */}
-                            <span className="italic opacity-50">No output available.</span>
+                        <div className="flex-1 p-3 text-[13px]" style={{ color: '#858585', fontFamily: "Consolas, 'Courier New', monospace" }}>
+                            No output available.
                         </div>
                     )}
 
                     {activeTab === 'problems' && (
-                        <div className="flex-1 overflow-y-auto">
-                            {!state.issues || state.issues.length === 0 ? (
-                                <div className="p-4 text-xs text-studio-text-muted flex items-center justify-center h-full flex-col gap-2 opacity-50">
-                                    <MessageSquareWarning className="w-8 h-8" />
-                                    <span>No problems have been detected in the workspace.</span>
+                        <div className="h-full overflow-y-auto">
+                            {(!state.issues || state.issues.length === 0) ? (
+                                <div className="p-3 text-[13px]" style={{ color: '#858585' }}>
+                                    No problems have been detected in the workspace.
                                 </div>
                             ) : (
-                                <div className="py-2">
+                                <div>
                                     {state.issues.map((issue, idx) => (
-                                        <div key={idx} className="flex items-start gap-2 px-4 py-2 hover:bg-studio-surface text-xs text-studio-text transition-colors">
-                                            <div className="w-4 h-4 mt-0.5 shrink-0 flex items-center justify-center rounded-full bg-red-400/20 text-red-400 font-bold text-[10px]">!</div>
-                                            <div className="flex-1">
-                                                <div className="font-medium text-studio-text">{issue.message || 'Issue detected'}</div>
-                                                <div className="text-studio-text-muted mt-1 opacity-70 flex gap-2">
-                                                    <span>{issue.file || 'Unknown file'}</span>
-                                                    {issue.line && <span>Line {issue.line}</span>}
-                                                </div>
-                                            </div>
+                                        <div 
+                                            key={idx} 
+                                            className="flex items-start gap-2 px-4 h-[22px] items-center text-[13px] transition-colors cursor-pointer"
+                                            style={{ color: '#cccccc' }}
+                                            onMouseOver={e => e.currentTarget.style.background = '#2a2d2e'}
+                                            onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <span style={{ color: '#f14c4c' }}>●</span>
+                                            <span className="truncate">{issue.message || 'Issue detected'}</span>
+                                            <span className="ml-auto" style={{ color: '#858585' }}>{issue.file || ''}</span>
                                         </div>
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {activeTab === 'debug' && (
+                        <div className="p-3 text-[13px]" style={{ color: '#858585' }}>
+                            Run and Debug console. Start a debugging session to see output here.
                         </div>
                     )}
                 </div>

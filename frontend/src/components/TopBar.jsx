@@ -1,40 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import axios from 'axios';
 import {
-    FolderOpen, FilePlus2, Play, Save, Home,
-    Minus, Square, X, Cpu, Users, Keyboard, XCircle
+    Minus, Square, X, Cpu
 } from 'lucide-react';
 import { socket } from '../socket';
 
-const KEYBOARD_SHORTCUTS = [
-    { keys: 'Ctrl+S', action: 'Save File' },
-    { keys: 'Ctrl+Shift+S', action: 'Save All Files' },
-    { keys: 'Ctrl+F', action: 'Find' },
-    { keys: 'Ctrl+H', action: 'Find and Replace' },
-    { keys: 'Ctrl+G', action: 'Go to Line' },
-    { keys: 'Ctrl+W', action: 'Close File' },
-    { keys: 'Ctrl+Shift+W', action: 'Close All Files' },
-    { keys: 'Ctrl+Tab', action: 'Next File' },
-    { keys: 'Ctrl+Shift+Tab', action: 'Previous File' },
-    { keys: 'Ctrl+/', action: 'Toggle Comment' },
-    { keys: 'Ctrl+Shift+A', action: 'Select All' },
-    { keys: 'Alt+Up', action: 'Move Line Up' },
-    { keys: 'Alt+Down', action: 'Move Line Down' },
-    { keys: 'Ctrl+[', action: 'Outdent Line' },
-    { keys: 'Ctrl+]', action: 'Indent Line' },
-    { keys: 'Ctrl+D', action: 'Duplicate Line' },
-    { keys: 'Ctrl+Shift+K', action: 'Delete Line' },
-    { keys: 'F1', action: 'Command Palette' },
-    { keys: 'Ctrl+Shift+P', action: 'Quick Open' },
-    { keys: 'Ctrl+`', action: 'Toggle Terminal' },
-];
+// VS Code menu definitions
+const MENU_ITEMS = {
+    File: [
+        { label: 'New File', shortcut: 'Ctrl+N', action: 'newFile' },
+        { label: 'Open File...', shortcut: 'Ctrl+O', action: 'openFile' },
+        { label: 'Open Folder...', shortcut: 'Ctrl+K Ctrl+O', action: 'openFolder' },
+        { type: 'separator' },
+        { label: 'Save', shortcut: 'Ctrl+S', action: 'save' },
+        { label: 'Save All', shortcut: 'Ctrl+K S', action: 'saveAll' },
+        { type: 'separator' },
+        { label: 'Preferences', action: 'preferences', children: true },
+        { type: 'separator' },
+        { label: 'Exit', shortcut: 'Alt+F4', action: 'exit' },
+    ],
+    Edit: [
+        { label: 'Undo', shortcut: 'Ctrl+Z', action: 'undo' },
+        { label: 'Redo', shortcut: 'Ctrl+Y', action: 'redo' },
+        { type: 'separator' },
+        { label: 'Cut', shortcut: 'Ctrl+X', action: 'cut' },
+        { label: 'Copy', shortcut: 'Ctrl+C', action: 'copy' },
+        { label: 'Paste', shortcut: 'Ctrl+V', action: 'paste' },
+        { type: 'separator' },
+        { label: 'Find', shortcut: 'Ctrl+F', action: 'find' },
+        { label: 'Replace', shortcut: 'Ctrl+H', action: 'replace' },
+        { label: 'Find in Files', shortcut: 'Ctrl+Shift+F', action: 'findInFiles' },
+    ],
+    Selection: [
+        { label: 'Select All', shortcut: 'Ctrl+A', action: 'selectAll' },
+        { label: 'Expand Selection', shortcut: 'Shift+Alt+Right', action: 'expandSelection' },
+        { label: 'Shrink Selection', shortcut: 'Shift+Alt+Left', action: 'shrinkSelection' },
+        { type: 'separator' },
+        { label: 'Copy Line Up', shortcut: 'Shift+Alt+Up', action: 'copyLineUp' },
+        { label: 'Copy Line Down', shortcut: 'Shift+Alt+Down', action: 'copyLineDown' },
+        { label: 'Move Line Up', shortcut: 'Alt+Up', action: 'moveLineUp' },
+        { label: 'Move Line Down', shortcut: 'Alt+Down', action: 'moveLineDown' },
+    ],
+    View: [
+        { label: 'Command Palette...', shortcut: 'Ctrl+Shift+P', action: 'commandPalette' },
+        { label: 'Open View...', action: 'openView' },
+        { type: 'separator' },
+        { label: 'Explorer', shortcut: 'Ctrl+Shift+E', action: 'showExplorer' },
+        { label: 'Search', shortcut: 'Ctrl+Shift+F', action: 'showSearch' },
+        { label: 'Source Control', shortcut: 'Ctrl+Shift+G', action: 'showSourceControl' },
+        { type: 'separator' },
+        { label: 'Terminal', shortcut: 'Ctrl+`', action: 'toggleTerminal' },
+        { label: 'Problems', shortcut: 'Ctrl+Shift+M', action: 'showProblems' },
+    ],
+    Go: [
+        { label: 'Go to File...', shortcut: 'Ctrl+P', action: 'quickOpen' },
+        { label: 'Go to Line...', shortcut: 'Ctrl+G', action: 'goToLine' },
+        { label: 'Go to Symbol...', shortcut: 'Ctrl+Shift+O', action: 'goToSymbol' },
+        { type: 'separator' },
+        { label: 'Go to Definition', shortcut: 'F12', action: 'goToDefinition' },
+        { label: 'Go Back', shortcut: 'Alt+Left', action: 'goBack' },
+        { label: 'Go Forward', shortcut: 'Alt+Right', action: 'goForward' },
+    ],
+    Run: [
+        { label: 'Start Debugging', shortcut: 'F5', action: 'startDebugging' },
+        { label: 'Run Without Debugging', shortcut: 'Ctrl+F5', action: 'runWithoutDebugging' },
+        { type: 'separator' },
+        { label: 'Run Analysis', action: 'runAnalysis' },
+        { label: 'Run Project', action: 'runProject' },
+    ],
+    Terminal: [
+        { label: 'New Terminal', shortcut: 'Ctrl+Shift+`', action: 'newTerminal' },
+        { label: 'Split Terminal', action: 'splitTerminal' },
+        { type: 'separator' },
+        { label: 'Run Task...', action: 'runTask' },
+    ],
+    Help: [
+        { label: 'Welcome', action: 'showWelcome' },
+        { label: 'Keyboard Shortcuts', shortcut: 'Ctrl+K Ctrl+S', action: 'showShortcuts' },
+        { label: 'Documentation', action: 'docs' },
+        { type: 'separator' },
+        { label: 'About', action: 'about' },
+    ],
+};
 
 export default function TopBar() {
     const { state, dispatch } = useApp();
-    const [showShortcuts, setShowShortcuts] = useState(false);
+    const [openMenu, setOpenMenu] = useState(null);
+    const [showCollabModal, setShowCollabModal] = useState(false);
+    const [collabInput, setCollabInput] = useState('');
+    const menuRef = useRef(null);
+
+    // Close menu on outside click
+    useEffect(() => {
+        const handleClick = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setOpenMenu(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, []);
 
     const handleOpenProject = async () => {
+        setOpenMenu(null);
         try {
             let folderPath;
             if (window.electronAPI) {
@@ -65,19 +134,42 @@ export default function TopBar() {
         }
     };
 
+    const handleSaveAll = async () => {
+        setOpenMenu(null);
+        const modifiedFiles = state.openFiles.filter(f => f.modified);
+        if (modifiedFiles.length === 0) {
+            dispatch({ type: 'SET_STATUS', payload: 'No files to save' });
+            return;
+        }
+
+        for (let i = 0; i < state.openFiles.length; i++) {
+            const file = state.openFiles[i];
+            if (!file.modified) continue;
+            try {
+                if (window.electronAPI) {
+                    await window.electronAPI.saveFile(file.path, file.content);
+                } else {
+                    await axios.post('/api/save-files', {
+                        files: [{ path: file.path, content: file.content }]
+                    });
+                }
+                dispatch({ type: 'MARK_FILE_SAVED', payload: i });
+            } catch (err) {
+                console.error('Failed to save:', file.path, err);
+            }
+        }
+        dispatch({ type: 'SET_STATUS', payload: `Saved ${modifiedFiles.length} file(s)` });
+    };
+
     const handleRunAnalysis = async () => {
+        setOpenMenu(null);
         if (!state.projectPath) return;
         dispatch({ type: 'SET_ANALYSIS_RUNNING', payload: true });
         dispatch({ type: 'SET_STATUS', payload: 'Running analysis...' });
-
         try {
-            const res = await axios.post('/api/run-analysis', {
-                projectPath: state.projectPath
-            });
+            const res = await axios.post('/api/run-analysis', { projectPath: state.projectPath });
             dispatch({ type: 'SET_ISSUES', payload: res.data.issues || [] });
             dispatch({ type: 'SET_STATUS', payload: `Found ${res.data.issues?.length || 0} issues` });
-
-            // Add issues to AI chat
             if (res.data.issues?.length > 0) {
                 dispatch({
                     type: 'ADD_AI_MESSAGE',
@@ -96,72 +188,8 @@ export default function TopBar() {
         }
     };
 
-    const handleSaveAll = async () => {
-        const modifiedFiles = state.openFiles.filter(f => f.modified);
-        if (modifiedFiles.length === 0) {
-            dispatch({ type: 'SET_STATUS', payload: 'No files to save' });
-            return;
-        }
-
-        dispatch({ type: 'SET_STATUS', payload: 'Saving files...' });
-
-        for (let i = 0; i < state.openFiles.length; i++) {
-            const file = state.openFiles[i];
-            if (!file.modified) continue;
-
-            try {
-                if (window.electronAPI) {
-                    await window.electronAPI.saveFile(file.path, file.content);
-                } else {
-                    await axios.post('/api/save-files', {
-                        files: [{ path: file.path, content: file.content }]
-                    });
-                }
-                dispatch({ type: 'MARK_FILE_SAVED', payload: i });
-            } catch (err) {
-                console.error('Failed to save:', file.path, err);
-            }
-        }
-
-        dispatch({ type: 'SET_STATUS', payload: `Saved ${modifiedFiles.length} file(s)` });
-    };
-
-    const [showCollabModal, setShowCollabModal] = useState(false);
-    const [collabInput, setCollabInput] = useState('');
-
-    const handleCollaborate = () => {
-        if (state.collabRoomId) {
-            if (window.confirm('Leave current collaboration room?')) {
-                socket.disconnect();
-                dispatch({ type: 'LEAVE_COLLAB_ROOM' });
-            }
-            return;
-        }
-
-        setShowCollabModal(true);
-    };
-
-    const submitCollabRoom = (e) => {
-        e.preventDefault();
-        const action = collabInput.trim();
-        if (!action) return;
-
-        let roomId = action.toLowerCase() === 'create' 
-            ? Math.random().toString(36).substring(2, 8).toUpperCase()
-            : action.toUpperCase();
-
-        if (!socket.connected) {
-            socket.connect();
-        }
-        socket.emit('join-room', roomId);
-        dispatch({ type: 'SET_COLLAB_ROOM', payload: roomId });
-        dispatch({ type: 'SET_STATUS', payload: `Joined Room: ${roomId}` });
-        
-        setShowCollabModal(false);
-        setCollabInput('');
-    };
-
     const handleRunProject = async (isDebug) => {
+        setOpenMenu(null);
         if (!state.projectPath || !window.electronAPI) return;
         try {
             const pkgPath = `${state.projectPath}/package.json`;
@@ -181,12 +209,10 @@ export default function TopBar() {
                 }
             } else {
                 cmd = 'node';
-                args = ['index.js']; // fallback
+                args = ['index.js'];
             }
 
-            if (isDebug) {
-                if (cmd === 'node') args.unshift('--inspect');
-            }
+            if (isDebug && cmd === 'node') args.unshift('--inspect');
 
             dispatch({ type: 'SET_STATUS', payload: `Starting project...` });
             window.electronAPI.startTerminalProcess(cmd, args, state.projectPath);
@@ -196,159 +222,192 @@ export default function TopBar() {
         }
     };
 
+    const handleMenuAction = (action) => {
+        setOpenMenu(null);
+        switch (action) {
+            case 'openFolder': handleOpenProject(); break;
+            case 'saveAll': handleSaveAll(); break;
+            case 'runAnalysis': handleRunAnalysis(); break;
+            case 'runProject': handleRunProject(false); break;
+            case 'startDebugging': handleRunProject(true); break;
+            case 'showExplorer': dispatch({ type: 'SET_SIDEBAR_VIEW', payload: 'explorer' }); break;
+            case 'showSearch': dispatch({ type: 'SET_SIDEBAR_VIEW', payload: 'search' }); break;
+            case 'showSourceControl': dispatch({ type: 'SET_SIDEBAR_VIEW', payload: 'source-control' }); break;
+            default: break;
+        }
+    };
+
+    const handleCollaborate = () => {
+        if (state.collabRoomId) {
+            if (window.confirm('Leave current collaboration room?')) {
+                socket.disconnect();
+                dispatch({ type: 'LEAVE_COLLAB_ROOM' });
+            }
+            return;
+        }
+        setShowCollabModal(true);
+    };
+
+    const submitCollabRoom = (e) => {
+        e.preventDefault();
+        const action = collabInput.trim();
+        if (!action) return;
+
+        let roomId = action.toLowerCase() === 'create' 
+            ? Math.random().toString(36).substring(2, 8).toUpperCase()
+            : action.toUpperCase();
+
+        if (!socket.connected) socket.connect();
+        socket.emit('join-room', roomId);
+        dispatch({ type: 'SET_COLLAB_ROOM', payload: roomId });
+        dispatch({ type: 'SET_STATUS', payload: `Joined Room: ${roomId}` });
+        
+        setShowCollabModal(false);
+        setCollabInput('');
+    };
+
     return (
         <>
-        <div className="flex items-center bg-studio-surface border-b border-studio-border select-none"
-            style={{ WebkitAppRegion: 'drag' }}>
-            {/* Logo */}
-            <div className="flex items-center gap-2 px-4 py-2"
-                style={{ WebkitAppRegion: 'no-drag' }}>
-                <div className="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
-                    <Cpu className="w-4 h-4 text-white" />
+        {/* Title Bar — exactly matching VS Code */}
+        <div 
+            className="flex items-center h-[30px] shrink-0 select-none"
+            style={{ 
+                background: '#323233', 
+                WebkitAppRegion: 'drag',
+                fontSize: '13px'
+            }}
+        >
+            {/* App Icon */}
+            <div className="flex items-center px-2.5 shrink-0" style={{ WebkitAppRegion: 'no-drag' }}>
+                <div className="w-4 h-4 flex items-center justify-center">
+                    <Cpu className="w-4 h-4 text-[#75beff]" />
                 </div>
-                <span className="text-sm font-semibold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-                    AI Studio
+            </div>
+
+            {/* Menu Bar */}
+            <div ref={menuRef} className="flex items-center" style={{ WebkitAppRegion: 'no-drag' }}>
+                {Object.keys(MENU_ITEMS).map((menuName) => (
+                    <div key={menuName} className="relative">
+                        <button
+                            onClick={() => setOpenMenu(openMenu === menuName ? null : menuName)}
+                            onMouseEnter={() => openMenu && setOpenMenu(menuName)}
+                            className="px-2 py-0.5 rounded-sm text-[13px]"
+                            style={{
+                                color: openMenu === menuName ? '#ffffff' : '#cccccc',
+                                background: openMenu === menuName ? 'rgba(255,255,255,0.1)' : 'transparent',
+                            }}
+                            onMouseOver={(e) => {
+                                if (!openMenu) e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+                            }}
+                            onMouseOut={(e) => {
+                                if (openMenu !== menuName) e.currentTarget.style.background = 'transparent';
+                            }}
+                        >
+                            {menuName}
+                        </button>
+
+                        {openMenu === menuName && (
+                            <div 
+                                className="absolute top-full left-0 mt-px py-1 rounded-md shadow-2xl z-50"
+                                style={{ 
+                                    background: '#3c3c3c', 
+                                    border: '1px solid #454545',
+                                    minWidth: '220px',
+                                }}
+                            >
+                                {MENU_ITEMS[menuName].map((item, i) => {
+                                    if (item.type === 'separator') {
+                                        return <div key={i} className="my-1 mx-3" style={{ borderTop: '1px solid #555555' }}></div>;
+                                    }
+                                    return (
+                                        <button
+                                            key={i}
+                                            className="w-full flex items-center justify-between px-6 py-[3px] text-[13px] text-left"
+                                            style={{ color: '#cccccc' }}
+                                            onClick={() => handleMenuAction(item.action)}
+                                            onMouseOver={(e) => {
+                                                e.currentTarget.style.background = '#04395e';
+                                                e.currentTarget.style.color = '#ffffff';
+                                            }}
+                                            onMouseOut={(e) => {
+                                                e.currentTarget.style.background = 'transparent';
+                                                e.currentTarget.style.color = '#cccccc';
+                                            }}
+                                        >
+                                            <span>{item.label}</span>
+                                            {item.shortcut && (
+                                                <span className="ml-8 text-[12px]" style={{ color: '#858585' }}>
+                                                    {item.shortcut}
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* Center — Title */}
+            <div className="flex-1 text-center" style={{ WebkitAppRegion: 'drag' }}>
+                <span className="text-[12px]" style={{ color: '#999999' }}>
+                    {state.projectName ? `${state.projectName} — ` : ''}AI Code Editor
                 </span>
-                {state.projectName && (
-                    <span className="text-xs text-studio-text-muted ml-2">
-                        — {state.projectName}
-                    </span>
+            </div>
+
+            {/* Collab badge */}
+            <div className="flex items-center gap-2 mr-2" style={{ WebkitAppRegion: 'no-drag' }}>
+                {state.collabRoomId ? (
+                    <button 
+                        onClick={handleCollaborate}
+                        className="text-[11px] px-2 py-0.5 rounded-sm"
+                        style={{ background: '#007acc', color: '#ffffff' }}
+                    >
+                        Room: {state.collabRoomId}
+                    </button>
+                ) : (
+                    <button 
+                        onClick={handleCollaborate}
+                        className="text-[11px] px-2 py-0.5 rounded-sm"
+                        style={{ color: '#858585' }}
+                        onMouseOver={e => e.currentTarget.style.color = '#cccccc'}
+                        onMouseOut={e => e.currentTarget.style.color = '#858585'}
+                    >
+                        Live Share
+                    </button>
                 )}
             </div>
 
-            {/* Toolbar buttons */}
-            <div className="flex items-center gap-1 px-2" style={{ WebkitAppRegion: 'no-drag' }}>
-                <button onClick={handleOpenProject}
-                    className="btn-ghost flex items-center gap-1.5" title="Open Project">
-                    <FolderOpen className="w-4 h-4" />
-                    <span className="text-xs">Open Project</span>
+            {/* Window Controls (Electron) */}
+            <div className="flex items-center h-full ml-auto" style={{ WebkitAppRegion: 'no-drag' }}>
+                <button className="h-full px-3.5 flex items-center justify-center hover:bg-white/10" style={{ color: '#999999' }}>
+                    <Minus className="w-4 h-4" />
                 </button>
-
-                <button onClick={() => dispatch({ type: 'GO_HOME' })}
-                    className="btn-ghost flex items-center gap-1.5" title="New AI Project">
-                    <FilePlus2 className="w-4 h-4" />
-                    <span className="text-xs">New AI Project</span>
+                <button className="h-full px-3.5 flex items-center justify-center hover:bg-white/10" style={{ color: '#999999' }}>
+                    <Square className="w-3.5 h-3.5" />
                 </button>
-
-                <div className="w-px h-5 bg-studio-border mx-1"></div>
-
-                <button onClick={handleCollaborate}
-                    className={`btn-ghost flex items-center gap-1.5 ${state.collabRoomId ? 'text-studio-accent bg-studio-accent/10' : ''}`}
-                    title={state.collabRoomId ? "Leave Room" : "Collaborate"}>
-                    <Users className="w-4 h-4" />
-                    <span className="text-xs">{state.collabRoomId ? state.collabRoomId : "Collaborate"}</span>
-                </button>
-
-                <div className="w-px h-5 bg-studio-border mx-1"></div>
-
-                <button onClick={handleRunAnalysis}
-                    disabled={!state.projectPath || state.analysisRunning}
-                    className="btn-ghost flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Run Analysis">
-                    <Play className="w-4 h-4 text-studio-success" />
-                    <span className="text-xs">Run Analysis</span>
-                </button>
-
-                <div className="w-px h-5 bg-studio-border mx-1"></div>
-
-                <button onClick={() => handleRunProject(false)}
-                    disabled={!state.projectPath}
-                    className="btn-ghost flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Run Project">
-                    <Play className="w-4 h-4 text-green-400" />
-                    <span className="text-xs">Run</span>
-                </button>
-                <button onClick={() => handleRunProject(true)}
-                    disabled={!state.projectPath}
-                    className="btn-ghost flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Run and Debug">
-                    <Play className="w-4 h-4 text-yellow-400" />
-                    <span className="text-xs">Debug</span>
-                </button>
-
-                <div className="w-px h-5 bg-studio-border mx-1"></div>
-
-                <button onClick={handleSaveAll}
-                    className="btn-ghost flex items-center gap-1.5" title="Save All Files">
-                    <Save className="w-4 h-4" />
-                    <span className="text-xs">Save Files</span>
-                </button>
-
-                <div className="w-px h-5 bg-studio-border mx-1"></div>
-
-                <button onClick={() => setShowShortcuts(true)}
-                    className="btn-ghost flex items-center gap-1.5" title="Keyboard Shortcuts">
-                    <Keyboard className="w-4 h-4" />
-                    <span className="text-xs">Shortcuts</span>
+                <button className="h-full px-3.5 flex items-center justify-center hover:bg-[#e81123]" style={{ color: '#999999' }}>
+                    <X className="w-4 h-4" />
                 </button>
             </div>
-
-            {/* Spacer for drag region */}
-            <div className="flex-1"></div>
-
         </div>
 
-        {/* Keyboard Shortcuts Modal */}
-        {showShortcuts && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowShortcuts(false)}>
-                <div 
-                    className="bg-studio-surface border border-studio-border rounded-lg shadow-2xl w-[480px] max-h-[80vh] overflow-hidden flex flex-col"
-                    onClick={e => e.stopPropagation()}
-                >
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-studio-border">
-                        <h2 className="text-sm font-semibold text-studio-text">Keyboard Shortcuts</h2>
-                        <button onClick={() => setShowShortcuts(false)} className="p-1 rounded hover:bg-studio-surface-hover">
-                            <XCircle className="w-5 h-5 text-studio-text-muted" />
-                        </button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-2">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-studio-border">
-                                    <th className="text-left text-xs text-studio-text-muted px-2 py-1.5 font-medium">Keys</th>
-                                    <th className="text-left text-xs text-studio-text-muted px-2 py-1.5 font-medium">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {KEYBOARD_SHORTCUTS.map((shortcut, index) => (
-                                    <tr key={index} className="border-b border-studio-border/50">
-                                        <td className="px-2 py-1.5">
-                                            <kbd className="bg-studio-bg px-1.5 py-0.5 rounded text-xs text-studio-accent font-mono">
-                                                {shortcut.keys}
-                                            </kbd>
-                                        </td>
-                                        <td className="px-2 py-1.5 text-xs text-studio-text-muted">{shortcut.action}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div className="px-4 py-2 border-t border-studio-border flex justify-end">
-                        <button onClick={() => setShowShortcuts(false)} className="px-3 py-1.5 bg-studio-accent text-white text-xs rounded hover:bg-studio-accent-hover">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
         {/* Collab Modal */}
         {showCollabModal && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCollabModal(false)}>
+            <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-[20vh] z-50" onClick={() => setShowCollabModal(false)}>
                 <div 
-                    className="bg-studio-surface border border-studio-border rounded-lg shadow-2xl w-[400px] overflow-hidden flex flex-col"
+                    className="w-[400px] rounded-md shadow-2xl overflow-hidden"
+                    style={{ background: '#252526', border: '1px solid #3c3c3c' }}
                     onClick={e => e.stopPropagation()}
                 >
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-studio-border">
-                        <h2 className="text-sm font-semibold text-studio-text flex items-center gap-2">
-                            <Users className="w-4 h-4 text-studio-accent" />
+                    <div className="px-4 py-3" style={{ borderBottom: '1px solid #3c3c3c' }}>
+                        <h2 className="text-[13px] font-normal" style={{ color: '#cccccc' }}>
                             Join Collaboration Room
                         </h2>
-                        <button onClick={() => setShowCollabModal(false)} className="p-1 rounded hover:bg-studio-surface-hover">
-                            <XCircle className="w-5 h-5 text-studio-text-muted" />
-                        </button>
                     </div>
                     <form onSubmit={submitCollabRoom} className="p-4">
-                        <label className="block text-xs text-studio-text-muted mb-2">
+                        <label className="block text-[12px] mb-2" style={{ color: '#858585' }}>
                             Enter "create" to host a new room, or enter an existing Room ID to join:
                         </label>
                         <input 
@@ -356,14 +415,14 @@ export default function TopBar() {
                             value={collabInput}
                             onChange={(e) => setCollabInput(e.target.value)}
                             placeholder="e.g. create or G7T2X"
-                            className="w-full bg-studio-bg border border-studio-border rounded-lg px-3 py-2 text-sm text-studio-text outline-none focus:border-studio-accent font-mono mb-4"
+                            className="vscode-input w-full rounded-sm mb-4 font-mono"
                             autoFocus
                         />
                         <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => setShowCollabModal(false)} className="px-3 py-1.5 bg-studio-surface text-studio-text text-sm rounded hover:bg-studio-surface-hover">
+                            <button type="button" onClick={() => setShowCollabModal(false)} className="btn-secondary">
                                 Cancel
                             </button>
-                            <button type="submit" className="px-3 py-1.5 bg-studio-accent text-white text-sm rounded hover:bg-studio-accent-hover font-medium">
+                            <button type="submit" className="btn-primary">
                                 Join/Create
                             </button>
                         </div>
