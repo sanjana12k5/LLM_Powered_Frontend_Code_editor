@@ -112,10 +112,73 @@ export default function CollaborationPanel() {
 
     if (!state.collabRoomId) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-studio-text-muted">
-                <Users className="w-12 h-12 mb-4 opacity-50" />
-                <h3 className="text-lg font-medium text-studio-text mb-2">Not in a Room</h3>
-                <p className="text-sm">Create or join a collaboration room from the TopBar to start coding together.</p>
+            <div className="flex-1 flex flex-col p-5" style={{ background: '#252526' }}>
+                <div className="flex flex-col items-center justify-center text-center mb-6 mt-4">
+                    <Users className="w-12 h-12 mb-4" style={{ color: '#858585' }} />
+                    <h3 className="text-[14px] font-semibold mb-2" style={{ color: '#cccccc' }}>Live Share Session</h3>
+                    <p className="text-[12px]" style={{ color: '#858585' }}>Collaborate in real-time with your team.</p>
+                </div>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-[12px] mb-1.5 font-medium" style={{ color: '#cccccc' }}>Start a New Session</label>
+                        <p className="text-[11px] mb-2" style={{ color: '#858585' }}>Host a new collaboration room and invite others.</p>
+                        <button 
+                            onClick={() => {
+                                const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+                                if (!socket.connected) socket.connect();
+                                socket.emit('join-room', roomId);
+                                dispatch({ type: 'SET_COLLAB_ROOM', payload: roomId });
+                                dispatch({ type: 'SET_STATUS', payload: `Joined Room: ${roomId}` });
+                            }}
+                            className="w-full py-1.5 rounded-sm text-[12px]"
+                            style={{ background: '#0e639c', color: '#ffffff' }}
+                        >
+                            Create Room
+                        </button>
+                    </div>
+
+                    <div className="h-px w-full my-4" style={{ background: '#3c3c3c' }}></div>
+
+                    <div>
+                        <label className="block text-[12px] mb-1.5 font-medium" style={{ color: '#cccccc' }}>Join Existing Session</label>
+                        <p className="text-[11px] mb-2" style={{ color: '#858585' }}>Enter a Room ID shared by your teammate.</p>
+                        <input 
+                            type="text" 
+                            id="join-room-input"
+                            placeholder="e.g. G7T2X"
+                            className="vscode-input w-full rounded-sm mb-2 font-mono text-[12px]"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    const val = e.target.value.trim().toUpperCase();
+                                    if (val) {
+                                        if (!socket.connected) socket.connect();
+                                        socket.emit('join-room', val);
+                                        dispatch({ type: 'SET_COLLAB_ROOM', payload: val });
+                                        dispatch({ type: 'SET_STATUS', payload: `Joined Room: ${val}` });
+                                    }
+                                }
+                            }}
+                        />
+                        <button 
+                            onClick={() => {
+                                const val = document.getElementById('join-room-input').value.trim().toUpperCase();
+                                if (val) {
+                                    if (!socket.connected) socket.connect();
+                                    socket.emit('join-room', val);
+                                    dispatch({ type: 'SET_COLLAB_ROOM', payload: val });
+                                    dispatch({ type: 'SET_STATUS', payload: `Joined Room: ${val}` });
+                                }
+                            }}
+                            className="w-full py-1.5 rounded-sm text-[12px]"
+                            style={{ background: '#3c3c3c', color: '#cccccc' }}
+                            onMouseOver={e => e.currentTarget.style.background = '#454545'}
+                            onMouseOut={e => e.currentTarget.style.background = '#3c3c3c'}
+                        >
+                            Join Room
+                        </button>
+                    </div>
+                </div>
             </div>
         );
     }

@@ -4,57 +4,58 @@ exports.getAIFix = async (req, res) => {
     const { message, currentFile, issues, contextFiles } = req.body;
 
     try {
-        let prompt = `You are an expert AI software developer and code reviewer inside an advanced IDE.\n`;
+        let prompt = `You are an expert AI autonomous developer tuned for "Vibe Coding" inside an advanced IDE.
+You have full context of the user's workspace based on the opened files provided below.
+Your goal is to infer the broader architectural "vibe", seamlessly implement features across multiple files, and aggressively deliver production-ready code. DO NOT be lazy. DO NOT use placeholders like "rest of code goes here". Write complete implementations.
+
+`;
         
         if (issues && issues.length > 0) {
-            prompt += 'The following issues were detected in the codebase:\n\n';
+            prompt += '### DETECTED WORKSPACE ISSUES\n\n';
             issues.forEach((issue, i) => {
                 prompt += `${i + 1}. [${issue.severity.toUpperCase()}] ${issue.file}:${issue.line} — ${issue.message}\n`;
             });
             prompt += '\n';
         }
 
-        if (currentFile) {
-            prompt += `Current focused file: ${currentFile.name} (${currentFile.language})\n`;
-            prompt += `File path: ${currentFile.path}\n\n`;
-            prompt += '```' + currentFile.language + '\n';
-            prompt += currentFile.content + '\n';
-            prompt += '```\n\n';
-        }
-
-        if (contextFiles && contextFiles.length > 0) {
-            prompt += `Other open files for context:\n`;
-            contextFiles.forEach(cf => {
-                if (cf.path !== currentFile?.path) {
-                    prompt += `--- ${cf.path} ---\n\`\`\`${cf.language}\n${cf.content}\n\`\`\`\n\n`;
-                }
-            });
-        }
-
-        prompt += `User Request: ${message}\n\n`;
+        prompt += '### OPEN PROJECT FILES (CONTEXT)\n\n';
         
-        prompt += `INSTRUCTIONS:
-1. Provide a clear, concise explanation of your findings or plan.
-2. If the user request requires modifying files, creating files, or deleting files, you MUST provide the proposed file changes in a JSON block formatting exactly like this:
+        if (contextFiles && contextFiles.length > 0) {
+            contextFiles.forEach(cf => {
+                const isCurrent = currentFile && cf.path === currentFile.path;
+                prompt += `--- FILE: ${cf.path} ${isCurrent ? '(CURRENTLY FOCUSED)' : ''} ---\n`;
+                prompt += `\`\`\`${cf.language}\n${cf.content}\n\`\`\`\n\n`;
+            });
+        } else if (currentFile) {
+            prompt += `--- FILE: ${currentFile.path} (CURRENTLY FOCUSED) ---\n`;
+            prompt += `\`\`\`${currentFile.language}\n${currentFile.content}\n\`\`\`\n\n`;
+        }
+
+        prompt += `### USER REQUEST:\n${message}\n\n`;
+        
+        prompt += `### EXECUTION INSTRUCTIONS:
+1. Briefly explain your implementation plan, acknowledging the cross-file impact if any.
+2. Provide ALL necessary code edits to fulfill the user's request across ANY of the contextual files.
+3. You MUST provide your proposed file changes in a STRICT JSON block formatted exactly like this:
 \`\`\`json
 {
   "edits": [
     {
       "path": "relative/path/or/absolute/path.js",
       "action": "modify", // "modify", "create", or "delete"
-      "content": "entire new content of the file" // Required for modify/create
+      "content": "entire new content of the file"
     }
   ]
 }
 \`\`\`
-Return the FULL implementation for files in "content" property. Do not use placeholders or omit code.
+CRITICAL: The "content" property MUST contain the FULL, COMPLETE contents of the file. No truncation. No placeholders.
 
 Format your response as:
 **Explanation:**
 [Your explanation]
 
 **Changes:**
-[Optional JSON block if applicable]
+[JSON block]
 `;
 
         const aiResponse = await aiService.query(prompt);

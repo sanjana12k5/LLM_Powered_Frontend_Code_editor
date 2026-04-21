@@ -30,13 +30,14 @@ function createWindow() {
     height: 900,
     minWidth: 1024,
     minHeight: 700,
-    frame: true,
+    frame: false,
+    titleBarStyle: 'hidden',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false
     },
-    backgroundColor: '#0d1117',
+    backgroundColor: '#1e1e1e',
     icon: path.join(__dirname, '..', 'assets', 'icon.png')
   });
 

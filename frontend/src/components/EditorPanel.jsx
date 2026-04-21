@@ -521,8 +521,8 @@ export default function EditorPanel() {
 
             {/* Settings Dropdown */}
             {showSettings && (
-                <div className="absolute right-14 top-12 bg-studio-surface border border-studio-border rounded-lg shadow-xl p-3 z-40 w-64">
-                    <h3 className="text-xs font-semibold text-studio-text mb-2 uppercase tracking-wider">Editor Settings</h3>
+                <div className="fixed right-14 top-24 bg-studio-surface border border-studio-border rounded-lg shadow-2xl p-3 z-[100] w-64" style={{ background: '#252526' }}>
+                    <h3 className="text-[11px] font-semibold text-studio-text mb-3 uppercase tracking-wider">Editor Settings</h3>
                     <div className="space-y-2">
                         <label className="flex items-center justify-between text-xs cursor-pointer">
                             <span className="text-studio-text-muted">Line Numbers</span>

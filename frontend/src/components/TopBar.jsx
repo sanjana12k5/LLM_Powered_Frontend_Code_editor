@@ -4,7 +4,6 @@ import axios from 'axios';
 import {
     Minus, Square, X, Cpu
 } from 'lucide-react';
-import { socket } from '../socket';
 
 // VS Code menu definitions
 const MENU_ITEMS = {
@@ -87,8 +86,6 @@ const MENU_ITEMS = {
 export default function TopBar() {
     const { state, dispatch } = useApp();
     const [openMenu, setOpenMenu] = useState(null);
-    const [showCollabModal, setShowCollabModal] = useState(false);
-    const [collabInput, setCollabInput] = useState('');
     const menuRef = useRef(null);
 
     // Close menu on outside click
@@ -237,34 +234,7 @@ export default function TopBar() {
         }
     };
 
-    const handleCollaborate = () => {
-        if (state.collabRoomId) {
-            if (window.confirm('Leave current collaboration room?')) {
-                socket.disconnect();
-                dispatch({ type: 'LEAVE_COLLAB_ROOM' });
-            }
-            return;
-        }
-        setShowCollabModal(true);
-    };
 
-    const submitCollabRoom = (e) => {
-        e.preventDefault();
-        const action = collabInput.trim();
-        if (!action) return;
-
-        let roomId = action.toLowerCase() === 'create' 
-            ? Math.random().toString(36).substring(2, 8).toUpperCase()
-            : action.toUpperCase();
-
-        if (!socket.connected) socket.connect();
-        socket.emit('join-room', roomId);
-        dispatch({ type: 'SET_COLLAB_ROOM', payload: roomId });
-        dispatch({ type: 'SET_STATUS', payload: `Joined Room: ${roomId}` });
-        
-        setShowCollabModal(false);
-        setCollabInput('');
-    };
 
     return (
         <>
@@ -356,80 +326,44 @@ export default function TopBar() {
                 </span>
             </div>
 
-            {/* Collab badge */}
+            {/* Collab status */}
             <div className="flex items-center gap-2 mr-2" style={{ WebkitAppRegion: 'no-drag' }}>
-                {state.collabRoomId ? (
-                    <button 
-                        onClick={handleCollaborate}
+                {state.collabRoomId && (
+                    <span 
                         className="text-[11px] px-2 py-0.5 rounded-sm"
                         style={{ background: '#007acc', color: '#ffffff' }}
                     >
                         Room: {state.collabRoomId}
-                    </button>
-                ) : (
-                    <button 
-                        onClick={handleCollaborate}
-                        className="text-[11px] px-2 py-0.5 rounded-sm"
-                        style={{ color: '#858585' }}
-                        onMouseOver={e => e.currentTarget.style.color = '#cccccc'}
-                        onMouseOut={e => e.currentTarget.style.color = '#858585'}
-                    >
-                        Live Share
-                    </button>
+                    </span>
                 )}
             </div>
 
             {/* Window Controls (Electron) */}
             <div className="flex items-center h-full ml-auto" style={{ WebkitAppRegion: 'no-drag' }}>
-                <button className="h-full px-3.5 flex items-center justify-center hover:bg-white/10" style={{ color: '#999999' }}>
+                <button 
+                    onClick={() => window.electronAPI?.minimize()} 
+                    className="h-full px-3.5 flex items-center justify-center hover:bg-white/10" 
+                    style={{ color: '#999999' }}
+                >
                     <Minus className="w-4 h-4" />
                 </button>
-                <button className="h-full px-3.5 flex items-center justify-center hover:bg-white/10" style={{ color: '#999999' }}>
+                <button 
+                    onClick={() => window.electronAPI?.maximize()} 
+                    className="h-full px-3.5 flex items-center justify-center hover:bg-white/10" 
+                    style={{ color: '#999999' }}
+                >
                     <Square className="w-3.5 h-3.5" />
                 </button>
-                <button className="h-full px-3.5 flex items-center justify-center hover:bg-[#e81123]" style={{ color: '#999999' }}>
+                <button 
+                    onClick={() => window.electronAPI?.close()} 
+                    className="h-full px-3.5 flex items-center justify-center hover:bg-[#e81123]" 
+                    style={{ color: '#999999' }}
+                >
                     <X className="w-4 h-4" />
                 </button>
             </div>
         </div>
 
-        {/* Collab Modal */}
-        {showCollabModal && (
-            <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-[20vh] z-50" onClick={() => setShowCollabModal(false)}>
-                <div 
-                    className="w-[400px] rounded-md shadow-2xl overflow-hidden"
-                    style={{ background: '#252526', border: '1px solid #3c3c3c' }}
-                    onClick={e => e.stopPropagation()}
-                >
-                    <div className="px-4 py-3" style={{ borderBottom: '1px solid #3c3c3c' }}>
-                        <h2 className="text-[13px] font-normal" style={{ color: '#cccccc' }}>
-                            Join Collaboration Room
-                        </h2>
-                    </div>
-                    <form onSubmit={submitCollabRoom} className="p-4">
-                        <label className="block text-[12px] mb-2" style={{ color: '#858585' }}>
-                            Enter "create" to host a new room, or enter an existing Room ID to join:
-                        </label>
-                        <input 
-                            type="text" 
-                            value={collabInput}
-                            onChange={(e) => setCollabInput(e.target.value)}
-                            placeholder="e.g. create or G7T2X"
-                            className="vscode-input w-full rounded-sm mb-4 font-mono"
-                            autoFocus
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => setShowCollabModal(false)} className="btn-secondary">
-                                Cancel
-                            </button>
-                            <button type="submit" className="btn-primary">
-                                Join/Create
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        )}
         </>
     );
 }

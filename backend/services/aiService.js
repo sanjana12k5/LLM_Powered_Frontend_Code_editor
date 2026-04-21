@@ -39,17 +39,23 @@ async function queryGemini(prompt) {
         throw new Error('Gemini API key not configured. Set GEMINI_API_KEY in .env file.');
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+    // Using gemini-2.5-flash since Pro models exceed the free tier API quota limits for this key
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     // Ensure request body format
     const body = {
         contents: [
             {
+                role: "user",
                 parts: [
                     { text: prompt }
                 ]
             }
-        ]
+        ],
+        generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 8192,
+        }
     };
 
     try {
