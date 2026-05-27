@@ -1,4 +1,4 @@
-# ⚡ AI Diagnostic Studio (LLM-Powered Frontend IDE)
+#  AI Diagnostic Studio (LLM-Powered Frontend IDE)
 
 [![Electron](https://img.shields.io/badge/Electron-28.3.3-3178C6?logo=electron&logoColor=white&style=for-the-badge)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=black&style=for-the-badge)](https://react.dev/)
@@ -11,13 +11,6 @@
 An enterprise-grade, desktop-native code editor and diagnostic IDE featuring **real-time peer collaboration**, **multi-engine AI assistance** with an "Accept/Reject" Git-like diff review flow, **recursive four-tier static code analysis**, and **natural language full-stack autonomous project generation**.
 
 AI Diagnostic Studio is wrapped in a premium, frameless **Electron** desktop shell with a custom, high-contrast dark theme designed to provide professional developers with an ultra-responsive, beautiful, and integrated web development workstation.
-
----
-
-## 📸 Interface Preview
-
-*(You can embed screenshots or GIFs of your studio here)*
-> **Tip:** Showcase the 3-panel workspace, the Socket.io collaboration cursor visualizer, and the Monaco Editor diff system for maximum impact on your GitHub profile!
 
 ---
 
@@ -50,69 +43,6 @@ AI Diagnostic Studio is wrapped in a premium, frameless **Electron** desktop she
 
 ---
 
-## 🛠️ System Architecture
-
-The application splits responsibilities between a desktop Electron wrapper, a local React single-page app, and a Node.js Express & Socket server:
-
-### 📐 High-Level Architecture
-```mermaid
-graph TD
-    A[Electron Main Process] <-->|IPC Bridge / Preload| B[React 18 Frontend - Electron Render]
-    B <-->|Monaco Editor | C[Monaco Editor Canvas]
-    B <-->|REST API + WebSocket| D[Node.js Express / Socket.io Backend]
-    D <-->|AST Parsing & custom linters| E[Static Analysis Engine]
-    D <-->|HTTPS API REST Calls| F[Google Gemini API / OpenAI API]
-    D <-->|Schemas & Persistence| G[(MongoDB Database)]
-```
-
-### 🔁 AI Diff & Action Pipeline
-```mermaid
-sequenceDiagram
-    participant User as Developer
-    participant UI as React Monaco Editor
-    participant Server as Express Server
-    participant AI as LLM (OpenAI / Gemini)
-    participant FS as Local File System
-
-    User->>UI: Request Code Fix / Enhancement
-    UI->>Server: POST /api/get-ai-fix { contextFiles, currentFile, linterIssues }
-    Server->>AI: query(promptWithContext)
-    AI-->>Server: Return structured explanation + JSON proposed changes
-    Server-->>UI: Send parsed edits list
-    UI->>User: Display proposed edits (Accept/Reject list)
-    alt User clicks Accept
-        User->>UI: Accept Edit
-        UI->>FS: Electron IPC: saveFile()
-        UI->>UI: Reload file and focus updated content
-    else User clicks Reject
-        User->>UI: Reject Edit
-        UI->>UI: Discard proposal from list
-    end
-```
-
-### 🤝 Real-Time Collaboration Socket Flow
-```mermaid
-sequenceDiagram
-    participant PeerA as Host (Developer A)
-    participant Server as Express & Socket.io Server
-    participant PeerB as Client (Developer B)
-
-    PeerA->>Server: socket.emit('join-room', roomId)
-    PeerB->>Server: socket.emit('join-room', roomId)
-    Server-->>PeerA: emit('user-joined')
-    Server-->>PeerB: emit('user-joined')
-    Note over PeerA, PeerB: Session Active
-
-    PeerA->>Server: socket.emit('cursor-update', { selection, position })
-    Server-->>PeerB: broadcast('cursor-update')
-    Note right of PeerB: Monaco renders A's cursor & highlight
-
-    PeerB->>Server: socket.emit('code-update', { fileId, code })
-    Server-->>PeerA: broadcast('code-update')
-    Note left of PeerA: Monaco updates file contents instantly
-```
-
----
 
 ## 📁 Repository Structure
 
